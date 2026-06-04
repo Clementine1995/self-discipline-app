@@ -25,7 +25,7 @@
           </div>
 
           <IonList v-else lines="full" class="plain-list">
-            <IonItem v-for="habit in habitStore.habits" :key="habit.id" :router-link="`/tasks/${habit.id}/edit`">
+            <IonItem v-for="habit in habitStore.habits" :key="habit.id" :router-link="`/tasks/${habit.id}`">
               <IonLabel>
                 <h3>{{ habit.name }}</h3>
                 <p>{{ habit.reminderEnabled ? `${habit.reminderTime} 提醒` : '提醒已关闭' }}</p>

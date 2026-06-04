@@ -22,6 +22,11 @@ const routes: RouteRecordRaw[] = [
     component: () => import('@/pages/HabitEditorPage.vue'),
   },
   {
+    path: '/tasks/:id',
+    name: 'task-detail',
+    component: () => import('@/pages/HabitDetailPage.vue'),
+  },
+  {
     path: '/tasks/:id/edit',
     name: 'task-edit',
     component: () => import('@/pages/HabitEditorPage.vue'),

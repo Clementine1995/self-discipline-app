@@ -26,6 +26,12 @@ export type DayTrend = {
   completionRate: number;
 };
 
+export type HabitDayStatus = {
+  date: string;
+  checked: boolean;
+  isBeforeCreated: boolean;
+};
+
 export const buildHabitStats = (habit: Habit, checkIns: CheckIn[], today = toDateKey(new Date())): HabitStats => {
   const habitCheckIns = checkIns.filter((checkIn) => checkIn.habitId === habit.id);
   const checkedDates = new Set(habitCheckIns.map((checkIn) => checkIn.date));
@@ -92,3 +98,17 @@ export const buildSevenDayTrend = (habits: Habit[], checkIns: CheckIn[], today =
       completionRate: calculateCompletionRate(completed, total),
     };
   });
+
+export const buildHabitSevenDayStatus = (
+  habit: Habit,
+  checkIns: CheckIn[],
+  today = new Date(),
+): HabitDayStatus[] => {
+  const checkedDates = new Set(checkIns.filter((checkIn) => checkIn.habitId === habit.id).map((checkIn) => checkIn.date));
+
+  return getRecentDateKeys(7, today).map((date) => ({
+    date,
+    checked: checkedDates.has(date),
+    isBeforeCreated: date < habit.createdAt.slice(0, 10),
+  }));
+};

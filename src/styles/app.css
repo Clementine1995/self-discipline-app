@@ -218,6 +218,50 @@ ion-button {
   background: var(--ion-color-primary);
 }
 
+.history-strip {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 8px;
+  padding: 0 16px 16px;
+}
+
+.history-day {
+  display: grid;
+  gap: 6px;
+  justify-items: center;
+  min-width: 0;
+  border: 1px solid var(--app-border);
+  border-radius: var(--app-radius);
+  padding: 10px 4px;
+  color: var(--app-text-muted);
+  background: var(--app-surface);
+}
+
+.history-day.checked {
+  border-color: var(--ion-color-primary);
+  color: var(--ion-color-primary);
+  background: var(--app-surface-muted);
+}
+
+.history-day.muted {
+  opacity: 0.56;
+}
+
+.history-day strong,
+.history-day span {
+  overflow-wrap: anywhere;
+  text-align: center;
+}
+
+.history-day strong {
+  color: inherit;
+  font-size: 12px;
+}
+
+.history-day span {
+  font-size: 11px;
+}
+
 .option-stack {
   display: grid;
   gap: 10px;
