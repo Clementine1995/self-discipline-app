@@ -76,6 +76,20 @@
             <p>{{ punishmentPreview }}</p>
           </div>
         </section>
+
+        <section class="section-block">
+          <div class="section-heading">
+            <h2>本地数据</h2>
+            <p>导出 JSON 便于备份；清空数据会删除任务和打卡记录，但保留当前主题和语气设置。</p>
+          </div>
+
+          <div v-if="dataMessage" class="form-note">{{ dataMessage }}</div>
+
+          <div class="action-row">
+            <IonButton expand="block" @click="exportData">复制导出 JSON</IonButton>
+            <IonButton expand="block" fill="outline" color="danger" @click="resetData">清空任务和打卡</IonButton>
+          </div>
+        </section>
       </main>
     </IonContent>
   </IonPage>
@@ -88,10 +102,16 @@ import { themeConfigs } from '@/modules/themes/themeConfig';
 import { toneProfiles } from '@/modules/tones/toneProfiles';
 import { renderTonePrompt } from '@/modules/tones/toneCopy';
 import { getReminderPermissionStatus, sendTestReminder } from '@/modules/reminders/reminderService';
+import { clearLocalData, exportLocalDataAsJson } from '@/modules/data/dataBackupService';
 import { useAppStore } from '@/stores/appStore';
+import { useCheckinStore } from '@/stores/checkinStore';
+import { useHabitStore } from '@/stores/habitStore';
 
 const appStore = useAppStore();
+const habitStore = useHabitStore();
+const checkinStore = useCheckinStore();
 const reminderMessage = ref('');
+const dataMessage = ref('');
 const reminderStatus = reactive({
   supported: false,
   display: 'unknown',
@@ -119,5 +139,25 @@ const sendReminderTest = async () => {
   const result = await sendTestReminder();
   reminderMessage.value = result.message;
   await refreshReminderStatus();
+};
+
+const exportData = async () => {
+  const json = await exportLocalDataAsJson();
+
+  try {
+    await navigator.clipboard.writeText(json);
+    dataMessage.value = '数据 JSON 已复制到剪贴板';
+  } catch {
+    dataMessage.value = json;
+  }
+};
+
+const resetData = async () => {
+  await clearLocalData();
+  habitStore.habits = [];
+  habitStore.isLoaded = true;
+  checkinStore.checkIns = [];
+  checkinStore.isLoaded = true;
+  dataMessage.value = '任务和打卡记录已清空';
 };
 </script>
