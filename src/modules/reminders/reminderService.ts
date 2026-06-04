@@ -7,6 +7,30 @@ export type ReminderSyncResult = {
   message: string;
 };
 
+export type ReminderPermissionStatus = {
+  supported: boolean;
+  display: string;
+  message: string;
+};
+
+export const getReminderPermissionStatus = async (): Promise<ReminderPermissionStatus> => {
+  try {
+    const permission = await LocalNotifications.checkPermissions();
+
+    return {
+      supported: true,
+      display: permission.display,
+      message: getPermissionMessage(permission.display),
+    };
+  } catch {
+    return {
+      supported: false,
+      display: 'unsupported',
+      message: '当前环境暂不支持本地通知',
+    };
+  }
+};
+
 export const requestReminderPermission = async () => {
   const currentPermission = await LocalNotifications.checkPermissions();
 
@@ -85,6 +109,57 @@ export const scheduleDailyReminder = async (habit: Habit) => {
       },
     ],
   });
+};
+
+export const sendTestReminder = async (): Promise<ReminderSyncResult> => {
+  try {
+    const permission = await requestReminderPermission();
+
+    if (permission.display !== 'granted') {
+      return {
+        scheduled: false,
+        permissionGranted: false,
+        message: '通知权限未开启，无法发送测试提醒',
+      };
+    }
+
+    await LocalNotifications.schedule({
+      notifications: [
+        {
+          id: 900001,
+          title: '自律打卡测试提醒',
+          body: '如果你看到这条通知，说明本地提醒可以工作。',
+          schedule: {
+            at: new Date(Date.now() + 1000),
+          },
+        },
+      ],
+    });
+
+    return {
+      scheduled: true,
+      permissionGranted: true,
+      message: '测试提醒已发送',
+    };
+  } catch {
+    return {
+      scheduled: false,
+      permissionGranted: false,
+      message: '当前环境暂不支持本地通知',
+    };
+  }
+};
+
+const getPermissionMessage = (display: string) => {
+  if (display === 'granted') {
+    return '通知权限已开启';
+  }
+
+  if (display === 'denied') {
+    return '通知权限已拒绝，请在系统设置中开启';
+  }
+
+  return '通知权限尚未确认';
 };
 
 const getHabitNotificationId = (habitId: string) => Math.abs(hashString(habitId));
