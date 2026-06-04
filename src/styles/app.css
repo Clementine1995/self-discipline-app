@@ -237,6 +237,14 @@ ion-button {
   background: var(--app-surface);
 }
 
+.history-day:disabled {
+  cursor: not-allowed;
+}
+
+.history-day:not(:disabled) {
+  cursor: pointer;
+}
+
 .history-day.checked {
   border-color: var(--ion-color-primary);
   color: var(--ion-color-primary);

@@ -35,8 +35,8 @@ export const useCheckinStore = defineStore('checkins', {
       }
     },
 
-    async checkInHabit(habitId: string) {
-      const checkIn = await checkinService.checkInHabit(habitId);
+    async checkInHabit(habitId: string, date?: string) {
+      const checkIn = await checkinService.checkInHabit(habitId, date);
 
       if (!this.checkIns.some((item) => item.id === checkIn.id)) {
         this.checkIns = [...this.checkIns, checkIn];
@@ -45,11 +45,10 @@ export const useCheckinStore = defineStore('checkins', {
       return checkIn;
     },
 
-    async undoCheckIn(habitId: string) {
-      const today = toDateKey(new Date());
-      await checkinService.undoCheckIn(habitId, today);
+    async undoCheckIn(habitId: string, date = toDateKey(new Date())) {
+      await checkinService.undoCheckIn(habitId, date);
       this.checkIns = this.checkIns.filter(
-        (checkIn) => !(checkIn.habitId === habitId && checkIn.date === today),
+        (checkIn) => !(checkIn.habitId === habitId && checkIn.date === date),
       );
     },
   },

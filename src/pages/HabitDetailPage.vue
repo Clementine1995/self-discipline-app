@@ -42,19 +42,24 @@
         <section v-if="habit" class="section-block">
           <div class="section-heading">
             <h2>最近 7 天</h2>
-            <p>只展示这个任务的完成状态。</p>
+            <p>点击某一天可补打卡或取消记录。</p>
           </div>
 
+          <div v-if="statusMessage" class="form-note">{{ statusMessage }}</div>
+
           <div class="history-strip">
-            <div
+            <button
               v-for="day in history"
               :key="day.date"
               class="history-day"
               :class="{ checked: day.checked, muted: day.isBeforeCreated }"
+              type="button"
+              :disabled="day.isBeforeCreated"
+              @click="toggleHistoryDate(day.date, day.checked)"
             >
               <strong>{{ formatDay(day.date) }}</strong>
               <span>{{ day.isBeforeCreated ? '未创建' : day.checked ? '完成' : '未完成' }}</span>
-            </div>
+            </button>
           </div>
         </section>
 
@@ -76,7 +81,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 import {
   IonBackButton,
   IonButton,
@@ -97,6 +102,7 @@ const route = useRoute();
 const habitStore = useHabitStore();
 const checkinStore = useCheckinStore();
 const habitId = computed(() => String(route.params.id || ''));
+const statusMessage = ref('');
 const habit = computed(() => habitStore.getHabitById(habitId.value));
 const stats = computed(() =>
   habit.value
@@ -112,9 +118,25 @@ const stats = computed(() =>
 const history = computed(() => (habit.value ? buildHabitSevenDayStatus(habit.value, checkinStore.checkIns) : []));
 
 onIonViewWillEnter(() => {
+  statusMessage.value = '';
   habitStore.loadHabits();
   checkinStore.loadCheckIns();
 });
 
 const formatDay = (date: string) => date.slice(5);
+
+const toggleHistoryDate = async (date: string, checked: boolean) => {
+  if (!habit.value) {
+    return;
+  }
+
+  if (checked) {
+    await checkinStore.undoCheckIn(habit.value.id, date);
+    statusMessage.value = `${formatDay(date)} 的打卡已取消`;
+    return;
+  }
+
+  await checkinStore.checkInHabit(habit.value.id, date);
+  statusMessage.value = `${formatDay(date)} 已补打卡`;
+};
 </script>
