@@ -53,11 +53,28 @@
         </section>
       </main>
     </IonContent>
+
+    <IonAlert
+      :is-open="rewardAlert.isOpen"
+      header="奖励已解锁"
+      :message="rewardAlert.message"
+      confirm-button-text="知道了"
+      @didDismiss="rewardAlert.isOpen = false"
+    />
+
+    <IonToast
+      :is-open="toast.isOpen"
+      :message="toast.message"
+      :duration="1800"
+      position="top"
+      @didDismiss="toast.isOpen = false"
+    />
   </IonPage>
 </template>
 
 <script setup lang="ts">
 import {
+  IonAlert,
   IonButton,
   IonContent,
   IonHeader,
@@ -66,10 +83,11 @@ import {
   IonList,
   IonPage,
   IonTitle,
+  IonToast,
   IonToolbar,
   onIonViewWillEnter,
 } from '@ionic/vue';
-import { computed } from 'vue';
+import { computed, reactive } from 'vue';
 import { useHabitStore } from '@/stores/habitStore';
 import { useCheckinStore } from '@/stores/checkinStore';
 import { buildHabitStats, calculateCompletionRate } from '@/modules/stats/statsRules';
@@ -81,6 +99,14 @@ import { useAppStore } from '@/stores/appStore';
 const habitStore = useHabitStore();
 const checkinStore = useCheckinStore();
 const appStore = useAppStore();
+const toast = reactive({
+  isOpen: false,
+  message: '',
+});
+const rewardAlert = reactive({
+  isOpen: false,
+  message: '',
+});
 
 onIonViewWillEnter(() => {
   appStore.loadSettings();
@@ -103,17 +129,33 @@ const habitStatsMap = computed(() =>
   new Map(habitStore.habits.map((habit) => [habit.id, buildHabitStats(habit, checkinStore.checkIns)])),
 );
 
-const toggleCheckIn = (habitId: string) => {
+const toggleCheckIn = async (habitId: string) => {
   if (checkinStore.isHabitCheckedToday(habitId)) {
-    checkinStore.undoCheckIn(habitId);
+    await checkinStore.undoCheckIn(habitId);
+    showToast('已取消今天的打卡');
     return;
   }
 
-  checkinStore.checkInHabit(habitId);
+  await checkinStore.checkInHabit(habitId);
+
+  const habit = habitStore.getHabitById(habitId);
+  const stats = buildHabitStatsById(habitId);
+  const reward = stats ? findUnlockedReward(stats.currentStreak) : undefined;
+  const message = reward
+    ? renderTonePrompt(appStore.toneId, 'reward', reward.message)
+    : `${habit?.name ?? '任务'} 已完成，今天这一格补上了。`;
+
+  if (reward) {
+    rewardAlert.message = message;
+    rewardAlert.isOpen = true;
+    return;
+  }
+
+  showToast(message);
 };
 
 const getHabitPrompt = (habitId: string) => {
-  const stats = habitStatsMap.value.get(habitId);
+  const stats = buildHabitStatsById(habitId);
 
   if (!stats) {
     return '';
@@ -126,5 +168,12 @@ const getHabitPrompt = (habitId: string) => {
 
   const punishment = findTriggeredPunishment(stats.totalFailures);
   return renderTonePrompt(appStore.toneId, 'punishment', punishment?.message ?? '');
+};
+
+const buildHabitStatsById = (habitId: string) => habitStatsMap.value.get(habitId);
+
+const showToast = (message: string) => {
+  toast.message = message;
+  toast.isOpen = true;
 };
 </script>
