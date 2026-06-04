@@ -40,7 +40,15 @@
               <span class="swatch" :style="{ backgroundColor: theme.accentColor }"></span>
               <span>
                 <strong>{{ theme.name }}</strong>
-                <small>{{ theme.backgroundColor }} · {{ theme.accentColor }}</small>
+                <small>{{ theme.description }}</small>
+                <small class="tone-meta">{{ theme.tagline }}</small>
+                <span class="theme-preview-strip">
+                  <i :style="{ backgroundColor: theme.accentColor }"></i>
+                  <i :style="{ backgroundColor: theme.secondaryAccentColor }"></i>
+                  <i :style="{ backgroundColor: theme.successColor }"></i>
+                  <i :style="{ backgroundColor: theme.warningColor }"></i>
+                  <i :style="{ backgroundColor: theme.dangerColor }"></i>
+                </span>
               </span>
             </button>
           </div>
@@ -64,6 +72,11 @@
               <span>
                 <strong>{{ tone.name }}</strong>
                 <small>{{ tone.description }}</small>
+                <small class="tone-meta">
+                  {{ intensityLabelMap[tone.intensity] }} · {{ categoryLabelMap[tone.category] }}
+                  <template v-if="tone.supportsMemeExtension"> · 支持梗包扩展</template>
+                </small>
+                <small>{{ tone.sample.reward }}</small>
               </span>
             </button>
           </div>
@@ -74,6 +87,26 @@
             <h2>语气预览</h2>
             <p>{{ rewardPreview }}</p>
             <p>{{ punishmentPreview }}</p>
+          </div>
+        </section>
+
+        <section class="section-block">
+          <div class="section-heading">
+            <h2>文案素材包</h2>
+            <p>先内置低刺激素材包，后续可以扩展为可更新梗包或自定义文案包。</p>
+          </div>
+
+          <div class="option-stack">
+            <div v-for="pack in toneMemePacks" :key="pack.id" class="option-row option-row-single">
+              <span>
+                <strong>{{ pack.name }}</strong>
+                <small>{{ pack.description }}</small>
+                <small class="tone-meta">
+                  {{ safetyLevelLabelMap[pack.safetyLevel] }} · {{ pack.enabledByDefault ? '默认启用' : '默认关闭' }}
+                </small>
+                <small>{{ previewPackScenes(pack) }}</small>
+              </span>
+            </div>
           </div>
         </section>
 
@@ -100,12 +133,14 @@ import { computed, reactive, ref } from 'vue';
 import { IonButton, IonContent, IonHeader, IonPage, IonTitle, IonToolbar, onIonViewWillEnter } from '@ionic/vue';
 import { themeConfigs } from '@/modules/themes/themeConfig';
 import { toneProfiles } from '@/modules/tones/toneProfiles';
+import { toneMemePacks } from '@/modules/tones/toneMemePacks';
 import { renderTonePrompt } from '@/modules/tones/toneCopy';
 import { getReminderPermissionStatus, sendTestReminder } from '@/modules/reminders/reminderService';
 import { clearLocalData, exportLocalDataAsJson } from '@/modules/data/dataBackupService';
 import { useAppStore } from '@/stores/appStore';
 import { useCheckinStore } from '@/stores/checkinStore';
 import { useHabitStore } from '@/stores/habitStore';
+import type { ToneCategory, ToneIntensity, ToneMemePack, ToneMemePackSafetyLevel } from '@/types/tone';
 
 const appStore = useAppStore();
 const habitStore = useHabitStore();
@@ -117,6 +152,22 @@ const reminderStatus = reactive({
   display: 'unknown',
   message: '正在读取通知权限...',
 });
+const intensityLabelMap: Record<ToneIntensity, string> = {
+  low: '低刺激',
+  medium: '中刺激',
+  high: '高刺激',
+};
+const categoryLabelMap: Record<ToneCategory, string> = {
+  supportive: '陪伴',
+  pressure: '督促',
+  data: '理性',
+  playful: '轻松',
+};
+const safetyLevelLabelMap: Record<ToneMemePackSafetyLevel, string> = {
+  safe: '安全',
+  edgy: '刺激',
+  restricted: '受限',
+};
 
 onIonViewWillEnter(() => {
   appStore.loadSettings();
@@ -129,6 +180,12 @@ const rewardPreview = computed(() =>
 const punishmentPreview = computed(() =>
   renderTonePrompt(appStore.toneId, 'punishment', '连续失败 3 次，减少一段娱乐时间并补一条复盘。'),
 );
+
+const previewPackScenes = (pack: ToneMemePack) =>
+  ['reward', 'punishment', 'recovery']
+    .map((scene) => pack.scenePrefixes[scene as keyof ToneMemePack['scenePrefixes']]?.[0])
+    .filter(Boolean)
+    .join(' / ');
 
 const refreshReminderStatus = async () => {
   const nextStatus = await getReminderPermissionStatus();

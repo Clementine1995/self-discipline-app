@@ -20,7 +20,13 @@
               <IonInput v-model="draft.reminderTime" label="提醒时间" label-placement="stacked" type="time" />
             </IonItem>
             <IonItem>
-              <IonToggle v-model="draft.reminderEnabled" justify="space-between">每天提醒</IonToggle>
+              <IonToggle v-model="draft.reminderEnabled" justify="space-between">启用提醒</IonToggle>
+            </IonItem>
+            <IonItem>
+              <IonLabel>
+                <h3>重复规则</h3>
+                <p>{{ repeatRuleLabel }}</p>
+              </IonLabel>
             </IonItem>
             <IonItem>
               <IonInput
@@ -48,6 +54,35 @@
               />
             </IonItem>
           </IonList>
+
+          <div class="option-stack form-option-stack">
+            <button
+              v-for="option in repeatRuleOptions"
+              :key="option.type"
+              class="option-row option-row-single"
+              :class="{ selected: draft.repeatRule.type === option.type }"
+              type="button"
+              @click="setRepeatRule(option.type)"
+            >
+              <span>
+                <strong>{{ option.label }}</strong>
+                <small>{{ option.description }}</small>
+              </span>
+            </button>
+          </div>
+
+          <div v-if="draft.repeatRule.type === 'weekly'" class="weekday-grid">
+            <button
+              v-for="weekday in weekdayOptions"
+              :key="weekday.value"
+              class="weekday-chip"
+              :class="{ selected: draft.repeatRule.daysOfWeek.includes(weekday.value) }"
+              type="button"
+              @click="toggleWeekday(weekday.value)"
+            >
+              {{ weekday.label }}
+            </button>
+          </div>
 
           <div v-if="errorMessage" class="form-error">{{ errorMessage }}</div>
           <div v-if="reminderMessage" class="form-note">{{ reminderMessage }}</div>
@@ -82,6 +117,7 @@ import {
   IonHeader,
   IonInput,
   IonItem,
+  IonLabel,
   IonList,
   IonPage,
   IonTextarea,
@@ -93,7 +129,9 @@ import {
 import { computed, reactive, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { createEmptyHabitDraft, toHabitDraft, validateHabitDraft } from '@/modules/habits/habitService';
+import { formatRepeatRule, weekdayOptions } from '@/modules/habits/repeatRules';
 import { useHabitStore } from '@/stores/habitStore';
+import type { RepeatRule, Weekday } from '@/types/habit';
 
 const route = useRoute();
 const router = useRouter();
@@ -104,6 +142,12 @@ const draft = reactive(createEmptyHabitDraft());
 const errorMessage = ref('');
 const reminderMessage = ref('');
 const isSaving = ref(false);
+const repeatRuleOptions: { type: RepeatRule['type']; label: string; description: string }[] = [
+  { type: 'daily', label: '每天', description: '每天都出现在今日任务里。' },
+  { type: 'weekdays', label: '工作日', description: '周一到周五执行。' },
+  { type: 'weekends', label: '周末', description: '周六和周日执行。' },
+  { type: 'weekly', label: '每周几', description: '自己选择一周中的执行日。' },
+];
 
 onIonViewWillEnter(async () => {
   errorMessage.value = '';
@@ -143,6 +187,39 @@ const saveHabit = async () => {
     reminderMessage.value = habitStore.reminderMessage;
     isSaving.value = false;
   }
+};
+
+const repeatRuleLabel = computed(() => formatRepeatRule(draft.repeatRule));
+
+const setRepeatRule = (type: RepeatRule['type']) => {
+  if (type === 'weekly') {
+    draft.repeatRule = {
+      type,
+      daysOfWeek: draft.repeatRule.type === 'weekly' ? draft.repeatRule.daysOfWeek : [1],
+    };
+    return;
+  }
+
+  draft.repeatRule = { type };
+};
+
+const toggleWeekday = (weekday: Weekday) => {
+  if (draft.repeatRule.type !== 'weekly') {
+    return;
+  }
+
+  const hasWeekday = draft.repeatRule.daysOfWeek.includes(weekday);
+
+  if (hasWeekday && draft.repeatRule.daysOfWeek.length === 1) {
+    return;
+  }
+
+  draft.repeatRule = {
+    type: 'weekly',
+    daysOfWeek: hasWeekday
+      ? draft.repeatRule.daysOfWeek.filter((item) => item !== weekday)
+      : [...draft.repeatRule.daysOfWeek, weekday].sort(),
+  };
 };
 
 const deleteHabit = async () => {

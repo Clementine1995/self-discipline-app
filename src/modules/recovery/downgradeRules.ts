@@ -1,5 +1,6 @@
 import type { Habit } from '@/types/habit';
 import type { ToneId } from '@/types/tone';
+import { renderTonePrompt } from '@/modules/tones/toneCopy';
 
 export type DowngradeSuggestion = {
   title: string;
@@ -53,13 +54,5 @@ const pickDowngradeAction = (habitName: string) => {
 };
 
 const renderToneAction = (toneId: ToneId, action: string) => {
-  if (toneId === 'coach') {
-    return `别追求完美，先执行最低版本：${action}`;
-  }
-
-  if (toneId === 'rational') {
-    return `下一步：${action}`;
-  }
-
-  return `先轻一点也可以，${action}`;
+  return renderTonePrompt(toneId, 'recovery', action);
 };

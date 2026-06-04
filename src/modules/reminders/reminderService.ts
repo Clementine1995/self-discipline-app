@@ -1,5 +1,6 @@
 import { LocalNotifications } from '@capacitor/local-notifications';
-import type { Habit } from '@/types/habit';
+import type { Habit, Weekday } from '@/types/habit';
+import { formatRepeatRule, getRepeatRuleWeekdays } from '@/modules/habits/repeatRules';
 
 export type ReminderSyncResult = {
   scheduled: boolean;
@@ -68,7 +69,7 @@ export const syncDailyReminder = async (habit: Habit): Promise<ReminderSyncResul
     return {
       scheduled: true,
       permissionGranted: true,
-      message: `${habit.reminderTime} 的每日提醒已设置`,
+      message: `${habit.reminderTime} 的${formatRepeatRule(habit.repeatRule)}提醒已设置`,
     };
   } catch {
     return {
@@ -82,7 +83,7 @@ export const syncDailyReminder = async (habit: Habit): Promise<ReminderSyncResul
 export const cancelDailyReminder = async (habitId: string) => {
   try {
     await LocalNotifications.cancel({
-      notifications: [{ id: getHabitNotificationId(habitId) }],
+      notifications: getHabitNotificationIds(habitId).map((id) => ({ id })),
     });
   } catch {
     // Browser preview may not support Capacitor local notifications.
@@ -95,19 +96,18 @@ export const scheduleDailyReminder = async (habit: Habit) => {
   }
 
   const [hour, minute] = habit.reminderTime.split(':').map(Number);
+  const weekdays = getRepeatRuleWeekdays(habit.repeatRule);
 
   await LocalNotifications.schedule({
-    notifications: [
-      {
-        id: getHabitNotificationId(habit.id),
+    notifications: weekdays.map((weekday) => ({
+      id: getHabitNotificationId(habit.id, weekday),
         title: '自律打卡提醒',
         body: `现在是 ${habit.name} 的时间`,
         schedule: {
-          on: { hour, minute },
+          on: { weekday: toCapacitorWeekday(weekday), hour, minute },
           repeats: true,
         },
-      },
-    ],
+    })),
   });
 };
 
@@ -162,7 +162,14 @@ const getPermissionMessage = (display: string) => {
   return '通知权限尚未确认';
 };
 
-const getHabitNotificationId = (habitId: string) => Math.abs(hashString(habitId));
+const getHabitNotificationIds = (habitId: string) => [
+  Math.abs(hashString(habitId)),
+  ...([0, 1, 2, 3, 4, 5, 6] as const).map((weekday) => getHabitNotificationId(habitId, weekday)),
+];
+
+const getHabitNotificationId = (habitId: string, weekday: number) => Math.abs(hashString(`${habitId}:${weekday}`));
+
+const toCapacitorWeekday = (weekday: Weekday) => (weekday === 0 ? 1 : weekday + 1);
 
 const hashString = (value: string) =>
   value.split('').reduce((hash, char) => (hash << 5) - hash + char.charCodeAt(0), 0);

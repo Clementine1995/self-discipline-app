@@ -22,6 +22,11 @@ const routes: RouteRecordRaw[] = [
     component: () => import('@/pages/HabitEditorPage.vue'),
   },
   {
+    path: '/tasks/ai-plan',
+    name: 'task-ai-plan',
+    component: () => import('@/pages/AiHabitPlanPage.vue'),
+  },
+  {
     path: '/tasks/:id',
     name: 'task-detail',
     component: () => import('@/pages/HabitDetailPage.vue'),
@@ -35,6 +40,11 @@ const routes: RouteRecordRaw[] = [
     path: '/stats',
     name: 'stats',
     component: () => import('@/pages/StatsPage.vue'),
+  },
+  {
+    path: '/review',
+    name: 'review',
+    component: () => import('@/pages/ReviewPage.vue'),
   },
   {
     path: '/settings',

@@ -4,7 +4,13 @@
       <IonToolbar>
         <IonTitle>任务管理</IonTitle>
         <IonButtons slot="end">
-          <IonButton router-link="/tasks/new">新增</IonButton>
+          <IonButton router-link="/tasks/ai-plan">
+            <IonIcon slot="start" :icon="sparklesIcon" />
+            AI
+          </IonButton>
+          <IonButton router-link="/tasks/new">
+            <IonIcon slot="icon-only" :icon="addIcon" />
+          </IonButton>
         </IonButtons>
       </IonToolbar>
     </IonHeader>
@@ -28,7 +34,7 @@
             <IonItem v-for="habit in habitStore.habits" :key="habit.id" :router-link="`/tasks/${habit.id}`">
               <IonLabel>
                 <h3>{{ habit.name }}</h3>
-                <p>{{ habit.reminderEnabled ? `${habit.reminderTime} 提醒` : '提醒已关闭' }}</p>
+                <p>{{ habit.reminderEnabled ? `${habit.reminderTime} 提醒` : '提醒已关闭' }} · {{ formatRepeatRule(habit.repeatRule) }}</p>
               </IonLabel>
             </IonItem>
           </IonList>
@@ -44,6 +50,7 @@ import {
   IonButtons,
   IonContent,
   IonHeader,
+  IonIcon,
   IonItem,
   IonLabel,
   IonList,
@@ -52,9 +59,13 @@ import {
   IonToolbar,
   onIonViewWillEnter,
 } from '@ionic/vue';
+import { addOutline, sparklesOutline } from 'ionicons/icons';
+import { formatRepeatRule } from '@/modules/habits/repeatRules';
 import { useHabitStore } from '@/stores/habitStore';
 
 const habitStore = useHabitStore();
+const addIcon = addOutline;
+const sparklesIcon = sparklesOutline;
 
 onIonViewWillEnter(() => {
   habitStore.loadHabits();

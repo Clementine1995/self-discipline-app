@@ -15,7 +15,10 @@
     <IonContent fullscreen>
       <main class="page-stack with-top-space">
         <section v-if="habit" class="hero-panel">
-          <p class="eyebrow">{{ habit.reminderEnabled ? `${habit.reminderTime} 提醒` : '提醒已关闭' }}</p>
+          <p class="eyebrow">
+            {{ habit.reminderEnabled ? `${habit.reminderTime} 提醒` : '提醒已关闭' }} ·
+            {{ formatRepeatRule(habit.repeatRule) }}
+          </p>
           <h1>{{ habit.name }}</h1>
           <p>连续 {{ stats.currentStreak }} 天 · 最长 {{ stats.longestStreak }} 天 · 累计 {{ stats.totalCheckIns }} 次</p>
         </section>
@@ -37,6 +40,14 @@
             <span>失败次数</span>
             <strong>{{ stats.totalFailures }}</strong>
           </div>
+          <div class="metric-tile">
+            <span>任务积分</span>
+            <strong>{{ pointProgress.totalPoints }}</strong>
+          </div>
+          <div class="metric-tile">
+            <span>里程碑加成</span>
+            <strong>{{ pointProgress.milestoneBonus }}</strong>
+          </div>
         </section>
 
         <section v-if="habit" class="section-block">
@@ -52,13 +63,13 @@
               v-for="day in history"
               :key="day.date"
               class="history-day"
-              :class="{ checked: day.checked, muted: day.isBeforeCreated }"
+              :class="{ checked: day.checked, muted: day.isBeforeCreated || !day.isScheduled }"
               type="button"
-              :disabled="day.isBeforeCreated"
+              :disabled="day.isBeforeCreated || !day.isScheduled"
               @click="toggleHistoryDate(day.date, day.checked)"
             >
               <strong>{{ formatDay(day.date) }}</strong>
-              <span>{{ day.isBeforeCreated ? '未创建' : day.checked ? '完成' : '未完成' }}</span>
+              <span>{{ getHistoryDayLabel(day) }}</span>
             </button>
           </div>
         </section>
@@ -107,6 +118,9 @@ import { useCheckinStore } from '@/stores/checkinStore';
 import { buildHabitSevenDayStatus, buildHabitStats } from '@/modules/stats/statsRules';
 import { buildDowngradeSuggestion } from '@/modules/recovery/downgradeRules';
 import { useAppStore } from '@/stores/appStore';
+import { formatRepeatRule } from '@/modules/habits/repeatRules';
+import { buildHabitPointProgress } from '@/modules/points/pointRules';
+import type { HabitDayStatus } from '@/modules/stats/statsRules';
 
 const route = useRoute();
 const appStore = useAppStore();
@@ -130,6 +144,18 @@ const history = computed(() => (habit.value ? buildHabitSevenDayStatus(habit.val
 const downgradeSuggestion = computed(() =>
   habit.value ? buildDowngradeSuggestion(habit.value, stats.value.totalFailures, appStore.toneId) : undefined,
 );
+const pointProgress = computed(() =>
+  habit.value
+    ? buildHabitPointProgress(habit.value, checkinStore.checkIns)
+    : {
+        habit: undefined,
+        totalCheckIns: 0,
+        longestStreak: 0,
+        basePoints: 0,
+        milestoneBonus: 0,
+        totalPoints: 0,
+      },
+);
 
 onIonViewWillEnter(() => {
   statusMessage.value = '';
@@ -139,6 +165,17 @@ onIonViewWillEnter(() => {
 });
 
 const formatDay = (date: string) => date.slice(5);
+const getHistoryDayLabel = (day: HabitDayStatus) => {
+  if (day.isBeforeCreated) {
+    return '未创建';
+  }
+
+  if (!day.isScheduled) {
+    return '休息';
+  }
+
+  return day.checked ? '完成' : '未完成';
+};
 
 const toggleHistoryDate = async (date: string, checked: boolean) => {
   if (!habit.value) {

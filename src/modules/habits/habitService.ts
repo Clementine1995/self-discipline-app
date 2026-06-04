@@ -1,12 +1,14 @@
 import type { Habit } from '@/types/habit';
 import { habitRepository } from '@/modules/habits/habitRepository';
 import { seedHabits } from '@/modules/habits/fixtures';
+import { defaultRepeatRule, normalizeRepeatRule } from '@/modules/habits/repeatRules';
 import { cancelDailyReminder, type ReminderSyncResult, syncDailyReminder } from '@/modules/reminders/reminderService';
 
 export type HabitDraft = {
   name: string;
   reminderTime: string;
   reminderEnabled: boolean;
+  repeatRule: Habit['repeatRule'];
   rewardText: string;
   punishmentText: string;
   failureThreshold: number;
@@ -21,6 +23,7 @@ export const createEmptyHabitDraft = (): HabitDraft => ({
   name: '',
   reminderTime: '21:30',
   reminderEnabled: true,
+  repeatRule: defaultRepeatRule,
   rewardText: '',
   punishmentText: '',
   failureThreshold: 3,
@@ -29,9 +32,10 @@ export const createEmptyHabitDraft = (): HabitDraft => ({
 export const habitService = {
   async listHabits() {
     const hasStoredHabits = await habitRepository.hasValue();
-    const habits = await habitRepository.getAll();
+    const habits = (await habitRepository.getAll()).map(normalizeHabit);
 
     if (hasStoredHabits) {
+      await habitRepository.saveAll(habits);
       return habits;
     }
 
@@ -89,6 +93,7 @@ export const toHabitDraft = (habit: Habit): HabitDraft => ({
   name: habit.name,
   reminderTime: habit.reminderTime,
   reminderEnabled: habit.reminderEnabled,
+  repeatRule: normalizeRepeatRule(habit.repeatRule),
   rewardText: habit.rewardText,
   punishmentText: habit.punishmentText,
   failureThreshold: habit.failureThreshold,
@@ -109,6 +114,10 @@ export const validateHabitDraft = (draft: HabitDraft) => {
     errors.push('失败阈值至少为 1');
   }
 
+  if (draft.repeatRule.type === 'weekly' && draft.repeatRule.daysOfWeek.length === 0) {
+    errors.push('每周重复至少选择一天');
+  }
+
   return errors;
 };
 
@@ -116,9 +125,15 @@ const normalizeHabitDraft = (draft: HabitDraft): HabitDraft => ({
   name: draft.name.trim(),
   reminderTime: draft.reminderTime || '21:30',
   reminderEnabled: draft.reminderEnabled,
+  repeatRule: normalizeRepeatRule(draft.repeatRule),
   rewardText: draft.rewardText.trim(),
   punishmentText: draft.punishmentText.trim(),
   failureThreshold: Math.max(1, Number(draft.failureThreshold) || 1),
+});
+
+const normalizeHabit = (habit: Habit): Habit => ({
+  ...habit,
+  repeatRule: normalizeRepeatRule(habit.repeatRule),
 });
 
 const createId = () => {
