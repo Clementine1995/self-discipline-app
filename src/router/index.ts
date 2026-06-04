@@ -47,6 +47,11 @@ const routes: RouteRecordRaw[] = [
     component: () => import('@/pages/ReviewPage.vue'),
   },
   {
+    path: '/review/weekly',
+    name: 'weekly-report',
+    component: () => import('@/pages/WeeklyReportPage.vue'),
+  },
+  {
     path: '/settings',
     name: 'settings',
     component: () => import('@/pages/SettingsPage.vue'),

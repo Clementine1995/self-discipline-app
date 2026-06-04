@@ -30,6 +30,7 @@ This file keeps the project handoff context inside the repository so another mac
 - Local data export and reset.
 - AI daily review placeholder using local rules.
 - AI habit plan placeholder using local rules.
+- AI weekly report placeholder using local rules.
 - Repeat rules: daily, weekdays, weekends, and selected weekdays.
 - Points system: check-in points, milestone bonus, level progress.
 

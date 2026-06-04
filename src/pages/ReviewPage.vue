@@ -3,6 +3,12 @@
     <IonHeader translucent>
       <IonToolbar>
         <IonTitle>每日复盘</IonTitle>
+        <IonButtons slot="end">
+          <IonButton router-link="/review/weekly">
+            <IonIcon slot="start" :icon="weeklyIcon" />
+            周报
+          </IonButton>
+        </IonButtons>
       </IonToolbar>
     </IonHeader>
 
@@ -113,8 +119,18 @@
 
 <script setup lang="ts">
 import { computed } from 'vue';
-import { IonContent, IonHeader, IonIcon, IonPage, IonTitle, IonToolbar, onIonViewWillEnter } from '@ionic/vue';
-import { alertCircleOutline, checkmarkCircleOutline } from 'ionicons/icons';
+import {
+  IonButton,
+  IonButtons,
+  IonContent,
+  IonHeader,
+  IonIcon,
+  IonPage,
+  IonTitle,
+  IonToolbar,
+  onIonViewWillEnter,
+} from '@ionic/vue';
+import { alertCircleOutline, calendarNumberOutline, checkmarkCircleOutline } from 'ionicons/icons';
 import { buildLocalAiDailyReview, type AiReviewRiskItem } from '@/modules/ai/aiReviewService';
 import { useAppStore } from '@/stores/appStore';
 import { useCheckinStore } from '@/stores/checkinStore';
@@ -125,6 +141,7 @@ const habitStore = useHabitStore();
 const checkinStore = useCheckinStore();
 const checkIcon = checkmarkCircleOutline;
 const pendingIcon = alertCircleOutline;
+const weeklyIcon = calendarNumberOutline;
 const riskLabelMap: Record<AiReviewRiskItem['level'], string> = {
   low: '低风险',
   medium: '中风险',
