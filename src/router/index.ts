@@ -31,6 +31,11 @@ const routes: RouteRecordRaw[] = [
     name: 'stats',
     component: () => import('@/pages/StatsPage.vue'),
   },
+  {
+    path: '/settings',
+    name: 'settings',
+    component: () => import('@/pages/SettingsPage.vue'),
+  },
 ];
 
 export default createRouter({

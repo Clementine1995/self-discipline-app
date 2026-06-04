@@ -21,3 +21,5 @@ corepack pnpm run build
 corepack pnpm run android:add
 corepack pnpm run android:sync
 ```
+
+Android 本地构建环境见 [docs/android-setup.md](docs/android-setup.md)。

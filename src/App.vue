@@ -1,5 +1,5 @@
 <template>
-  <IonApp>
+  <IonApp :style="themeStyle">
     <IonTabs>
       <IonRouterOutlet />
 
@@ -18,6 +18,11 @@
           <IonIcon :icon="statsIcon" />
           <IonLabel>统计</IonLabel>
         </IonTabButton>
+
+        <IonTabButton tab="settings" href="/settings">
+          <IonIcon :icon="settingsIcon" />
+          <IonLabel>设置</IonLabel>
+        </IonTabButton>
       </IonTabBar>
     </IonTabs>
   </IonApp>
@@ -33,9 +38,34 @@ import {
   IonTabButton,
   IonTabs,
 } from '@ionic/vue';
-import { barChartOutline, calendarClearOutline, listOutline } from 'ionicons/icons';
+import { barChartOutline, calendarClearOutline, listOutline, settingsOutline } from 'ionicons/icons';
+import { computed, onMounted } from 'vue';
+import { useAppStore } from '@/stores/appStore';
 
+const appStore = useAppStore();
 const todayIcon = calendarClearOutline;
 const tasksIcon = listOutline;
 const statsIcon = barChartOutline;
+const settingsIcon = settingsOutline;
+
+const themeStyle = computed(() => {
+  const theme = appStore.currentTheme;
+
+  return {
+    '--ion-background-color': theme.backgroundColor,
+    '--ion-text-color': theme.textColor,
+    '--ion-color-primary': theme.accentColor,
+    '--app-surface': theme.surfaceColor,
+    '--app-surface-muted': theme.surfaceMutedColor,
+    '--app-text-muted': theme.mutedTextColor,
+    '--app-border': theme.borderColor,
+    '--app-toolbar': theme.toolbarColor,
+    '--app-tab-bar': theme.tabBarColor,
+    '--app-radius': theme.cardRadius,
+  };
+});
+
+onMounted(() => {
+  appStore.loadSettings();
+});
 </script>

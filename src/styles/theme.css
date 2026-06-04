@@ -12,6 +12,8 @@
   --app-surface-muted: #e8efeb;
   --app-text-muted: #62706a;
   --app-border: #d9e3de;
+  --app-toolbar: rgba(244, 247, 244, 0.92);
+  --app-tab-bar: rgba(255, 255, 255, 0.96);
   --app-radius: 8px;
 }
 
@@ -20,11 +22,11 @@ ion-content {
 }
 
 ion-toolbar {
-  --background: rgba(244, 247, 244, 0.92);
+  --background: var(--app-toolbar);
   --border-color: rgba(217, 227, 222, 0.9);
 }
 
 ion-tab-bar {
-  --background: rgba(255, 255, 255, 0.96);
+  --background: var(--app-tab-bar);
   --border: 1px solid var(--app-border);
 }

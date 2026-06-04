@@ -75,11 +75,15 @@ import { useCheckinStore } from '@/stores/checkinStore';
 import { buildHabitStats, calculateCompletionRate } from '@/modules/stats/statsRules';
 import { findTriggeredPunishment } from '@/modules/punishments/punishmentRules';
 import { findUnlockedReward } from '@/modules/rewards/rewardRules';
+import { renderTonePrompt } from '@/modules/tones/toneCopy';
+import { useAppStore } from '@/stores/appStore';
 
 const habitStore = useHabitStore();
 const checkinStore = useCheckinStore();
+const appStore = useAppStore();
 
 onIonViewWillEnter(() => {
+  appStore.loadSettings();
   habitStore.loadHabits();
   checkinStore.loadCheckIns();
 });
@@ -117,10 +121,10 @@ const getHabitPrompt = (habitId: string) => {
 
   if (checkinStore.isHabitCheckedToday(habitId)) {
     const reward = findUnlockedReward(stats.currentStreak);
-    return reward?.message ?? '';
+    return renderTonePrompt(appStore.toneId, 'reward', reward?.message ?? '');
   }
 
   const punishment = findTriggeredPunishment(stats.totalFailures);
-  return punishment?.message ?? '';
+  return renderTonePrompt(appStore.toneId, 'punishment', punishment?.message ?? '');
 };
 </script>

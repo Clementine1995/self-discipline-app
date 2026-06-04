@@ -218,6 +218,49 @@ ion-button {
   background: var(--ion-color-primary);
 }
 
+.option-stack {
+  display: grid;
+  gap: 10px;
+  padding: 0 16px 16px;
+}
+
+.option-row {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 12px;
+  align-items: center;
+  width: 100%;
+  border: 1px solid var(--app-border);
+  border-radius: var(--app-radius);
+  padding: 14px;
+  color: var(--ion-text-color);
+  text-align: left;
+  background: var(--app-surface);
+}
+
+.option-row.selected {
+  border-color: var(--ion-color-primary);
+  box-shadow: inset 0 0 0 1px var(--ion-color-primary);
+}
+
+.option-row strong,
+.option-row small {
+  display: block;
+}
+
+.option-row small {
+  margin-top: 4px;
+  color: var(--app-text-muted);
+  line-height: 1.4;
+}
+
+.swatch {
+  width: 28px;
+  height: 28px;
+  border: 1px solid var(--app-border);
+  border-radius: 50%;
+}
+
 @media (min-width: 720px) {
   .page-stack {
     max-width: 720px;
