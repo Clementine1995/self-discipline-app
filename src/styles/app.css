@@ -127,6 +127,10 @@ ion-button {
   color: var(--ion-color-primary) !important;
 }
 
+.habit-prompt.muted {
+  color: var(--app-text-muted) !important;
+}
+
 .primary-action {
   margin: 16px;
 }

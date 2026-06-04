@@ -72,6 +72,14 @@
           </div>
         </section>
 
+        <section v-if="habit && downgradeSuggestion" class="section-block">
+          <div class="section-heading">
+            <h2>{{ downgradeSuggestion.title }}</h2>
+            <p>{{ downgradeSuggestion.reason }}</p>
+            <p>{{ downgradeSuggestion.action }}</p>
+          </div>
+        </section>
+
         <section v-if="!habit && !habitStore.isLoading" class="section-block">
           <div class="empty-state">没有找到这个任务，可能已经被删除。</div>
         </section>
@@ -97,8 +105,11 @@ import { useRoute } from 'vue-router';
 import { useHabitStore } from '@/stores/habitStore';
 import { useCheckinStore } from '@/stores/checkinStore';
 import { buildHabitSevenDayStatus, buildHabitStats } from '@/modules/stats/statsRules';
+import { buildDowngradeSuggestion } from '@/modules/recovery/downgradeRules';
+import { useAppStore } from '@/stores/appStore';
 
 const route = useRoute();
+const appStore = useAppStore();
 const habitStore = useHabitStore();
 const checkinStore = useCheckinStore();
 const habitId = computed(() => String(route.params.id || ''));
@@ -116,9 +127,13 @@ const stats = computed(() =>
       },
 );
 const history = computed(() => (habit.value ? buildHabitSevenDayStatus(habit.value, checkinStore.checkIns) : []));
+const downgradeSuggestion = computed(() =>
+  habit.value ? buildDowngradeSuggestion(habit.value, stats.value.totalFailures, appStore.toneId) : undefined,
+);
 
 onIonViewWillEnter(() => {
   statusMessage.value = '';
+  appStore.loadSettings();
   habitStore.loadHabits();
   checkinStore.loadCheckIns();
 });

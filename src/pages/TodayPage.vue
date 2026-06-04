@@ -40,6 +40,7 @@
                 <h3>{{ habit.name }}</h3>
                 <p>{{ habit.reminderTime }} 提醒 · 每天重复</p>
                 <p v-if="getHabitPrompt(habit.id)" class="habit-prompt">{{ getHabitPrompt(habit.id) }}</p>
+                <p v-if="getDowngradePrompt(habit.id)" class="habit-prompt muted">{{ getDowngradePrompt(habit.id) }}</p>
               </IonLabel>
               <IonButton
                 :fill="checkinStore.isHabitCheckedToday(habit.id) ? 'solid' : 'outline'"
@@ -95,6 +96,7 @@ import { findTriggeredPunishment } from '@/modules/punishments/punishmentRules';
 import { findUnlockedReward } from '@/modules/rewards/rewardRules';
 import { renderTonePrompt } from '@/modules/tones/toneCopy';
 import { useAppStore } from '@/stores/appStore';
+import { buildDowngradeSuggestion } from '@/modules/recovery/downgradeRules';
 
 const habitStore = useHabitStore();
 const checkinStore = useCheckinStore();
@@ -168,6 +170,21 @@ const getHabitPrompt = (habitId: string) => {
 
   const punishment = findTriggeredPunishment(stats.totalFailures);
   return renderTonePrompt(appStore.toneId, 'punishment', punishment?.message ?? '');
+};
+
+const getDowngradePrompt = (habitId: string) => {
+  if (checkinStore.isHabitCheckedToday(habitId)) {
+    return '';
+  }
+
+  const habit = habitStore.getHabitById(habitId);
+  const stats = buildHabitStatsById(habitId);
+
+  if (!habit || !stats) {
+    return '';
+  }
+
+  return buildDowngradeSuggestion(habit, stats.totalFailures, appStore.toneId)?.action ?? '';
 };
 
 const buildHabitStatsById = (habitId: string) => habitStatsMap.value.get(habitId);
