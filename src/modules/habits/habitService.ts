@@ -1,0 +1,115 @@
+import type { Habit } from '@/types/habit';
+import { habitRepository } from '@/modules/habits/habitRepository';
+import { seedHabits } from '@/modules/habits/fixtures';
+
+export type HabitDraft = {
+  name: string;
+  reminderTime: string;
+  reminderEnabled: boolean;
+  rewardText: string;
+  punishmentText: string;
+  failureThreshold: number;
+};
+
+export const createEmptyHabitDraft = (): HabitDraft => ({
+  name: '',
+  reminderTime: '21:30',
+  reminderEnabled: true,
+  rewardText: '',
+  punishmentText: '',
+  failureThreshold: 3,
+});
+
+export const habitService = {
+  async listHabits() {
+    const hasStoredHabits = await habitRepository.hasValue();
+    const habits = await habitRepository.getAll();
+
+    if (hasStoredHabits) {
+      return habits;
+    }
+
+    await habitRepository.saveAll(seedHabits);
+    return seedHabits;
+  },
+
+  async createHabit(draft: HabitDraft) {
+    const now = new Date().toISOString();
+    const habit: Habit = {
+      ...normalizeHabitDraft(draft),
+      id: createId(),
+      createdAt: now,
+      updatedAt: now,
+    };
+
+    const habits = await habitRepository.getAll();
+    const nextHabits = [...habits, habit];
+    await habitRepository.saveAll(nextHabits);
+    return habit;
+  },
+
+  async updateHabit(id: string, draft: HabitDraft) {
+    const habits = await habitRepository.getAll();
+    const nextHabits = habits.map((habit) =>
+      habit.id === id
+        ? {
+            ...habit,
+            ...normalizeHabitDraft(draft),
+            updatedAt: new Date().toISOString(),
+          }
+        : habit,
+    );
+
+    await habitRepository.saveAll(nextHabits);
+    return nextHabits.find((habit) => habit.id === id);
+  },
+
+  async deleteHabit(id: string) {
+    const habits = await habitRepository.getAll();
+    await habitRepository.saveAll(habits.filter((habit) => habit.id !== id));
+  },
+};
+
+export const toHabitDraft = (habit: Habit): HabitDraft => ({
+  name: habit.name,
+  reminderTime: habit.reminderTime,
+  reminderEnabled: habit.reminderEnabled,
+  rewardText: habit.rewardText,
+  punishmentText: habit.punishmentText,
+  failureThreshold: habit.failureThreshold,
+});
+
+export const validateHabitDraft = (draft: HabitDraft) => {
+  const errors: string[] = [];
+
+  if (!draft.name.trim()) {
+    errors.push('请输入任务名称');
+  }
+
+  if (!/^\d{2}:\d{2}$/.test(draft.reminderTime)) {
+    errors.push('请选择有效的提醒时间');
+  }
+
+  if (draft.failureThreshold < 1) {
+    errors.push('失败阈值至少为 1');
+  }
+
+  return errors;
+};
+
+const normalizeHabitDraft = (draft: HabitDraft): HabitDraft => ({
+  name: draft.name.trim(),
+  reminderTime: draft.reminderTime || '21:30',
+  reminderEnabled: draft.reminderEnabled,
+  rewardText: draft.rewardText.trim(),
+  punishmentText: draft.punishmentText.trim(),
+  failureThreshold: Math.max(1, Number(draft.failureThreshold) || 1),
+});
+
+const createId = () => {
+  if ('crypto' in window && 'randomUUID' in window.crypto) {
+    return window.crypto.randomUUID();
+  }
+
+  return `habit-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+};
