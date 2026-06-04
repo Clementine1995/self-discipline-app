@@ -1,6 +1,7 @@
 import type { Habit } from '@/types/habit';
 import { habitRepository } from '@/modules/habits/habitRepository';
 import { seedHabits } from '@/modules/habits/fixtures';
+import { cancelDailyReminder, type ReminderSyncResult, syncDailyReminder } from '@/modules/reminders/reminderService';
 
 export type HabitDraft = {
   name: string;
@@ -9,6 +10,11 @@ export type HabitDraft = {
   rewardText: string;
   punishmentText: string;
   failureThreshold: number;
+};
+
+export type HabitWriteResult = {
+  habit: Habit;
+  reminder: ReminderSyncResult;
 };
 
 export const createEmptyHabitDraft = (): HabitDraft => ({
@@ -45,7 +51,8 @@ export const habitService = {
     const habits = await habitRepository.getAll();
     const nextHabits = [...habits, habit];
     await habitRepository.saveAll(nextHabits);
-    return habit;
+    const reminder = await syncDailyReminder(habit);
+    return { habit, reminder };
   },
 
   async updateHabit(id: string, draft: HabitDraft) {
@@ -61,12 +68,20 @@ export const habitService = {
     );
 
     await habitRepository.saveAll(nextHabits);
-    return nextHabits.find((habit) => habit.id === id);
+    const habit = nextHabits.find((item) => item.id === id);
+
+    if (habit) {
+      const reminder = await syncDailyReminder(habit);
+      return { habit, reminder };
+    }
+
+    return undefined;
   },
 
   async deleteHabit(id: string) {
     const habits = await habitRepository.getAll();
     await habitRepository.saveAll(habits.filter((habit) => habit.id !== id));
+    await cancelDailyReminder(id);
   },
 };
 

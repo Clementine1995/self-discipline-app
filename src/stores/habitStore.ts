@@ -8,6 +8,7 @@ export const useHabitStore = defineStore('habits', {
     habits: [] as Habit[],
     isLoaded: false,
     isLoading: false,
+    reminderMessage: '',
   }),
   getters: {
     activeHabits: (state) => state.habits,
@@ -29,24 +30,27 @@ export const useHabitStore = defineStore('habits', {
     },
 
     async createHabit(draft: HabitDraft) {
-      const habit = await habitService.createHabit(draft);
+      const { habit, reminder } = await habitService.createHabit(draft);
       this.habits = [...this.habits, habit];
+      this.reminderMessage = reminder.message;
       return habit;
     },
 
     async updateHabit(id: string, draft: HabitDraft) {
-      const habit = await habitService.updateHabit(id, draft);
+      const result = await habitService.updateHabit(id, draft);
 
-      if (habit) {
-        this.habits = this.habits.map((item) => (item.id === id ? habit : item));
+      if (result) {
+        this.habits = this.habits.map((item) => (item.id === id ? result.habit : item));
+        this.reminderMessage = result.reminder.message;
       }
 
-      return habit;
+      return result?.habit;
     },
 
     async deleteHabit(id: string) {
       await habitService.deleteHabit(id);
       this.habits = this.habits.filter((habit) => habit.id !== id);
+      this.reminderMessage = '任务提醒已取消';
     },
   },
 });

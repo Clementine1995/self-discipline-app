@@ -17,6 +17,8 @@
             <p>本地保存，后续可替换为 Preferences、SQLite 或后端同步。</p>
           </div>
 
+          <div v-if="habitStore.reminderMessage" class="form-note">{{ habitStore.reminderMessage }}</div>
+
           <div v-if="habitStore.isLoading" class="empty-state">正在读取任务...</div>
           <div v-else-if="habitStore.habits.length === 0" class="empty-state">
             还没有任务，先创建一个每天要坚持的小动作。

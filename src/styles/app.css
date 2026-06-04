@@ -122,6 +122,11 @@ ion-button {
   font-weight: 700;
 }
 
+.habit-prompt {
+  margin-top: 6px;
+  color: var(--ion-color-primary) !important;
+}
+
 .primary-action {
   margin: 16px;
 }
@@ -131,7 +136,8 @@ ion-button {
 }
 
 .empty-state,
-.form-error {
+.form-error,
+.form-note {
   margin: 16px;
   border-radius: var(--app-radius);
   line-height: 1.6;
@@ -148,6 +154,12 @@ ion-button {
   padding: 12px 14px;
   color: #991b1b;
   background: #fee2e2;
+}
+
+.form-note {
+  padding: 12px 14px;
+  color: #0f5132;
+  background: #dcfce7;
 }
 
 .stats-grid {
@@ -171,6 +183,39 @@ ion-button {
   color: var(--ion-text-color);
   font-size: 28px;
   line-height: 1;
+}
+
+.trend-list {
+  display: grid;
+  gap: 12px;
+  padding: 0 16px 16px;
+}
+
+.trend-row {
+  display: grid;
+  grid-template-columns: 92px 1fr 42px;
+  gap: 10px;
+  align-items: center;
+  color: var(--app-text-muted);
+  font-size: 13px;
+}
+
+.trend-row strong {
+  color: var(--ion-text-color);
+  text-align: right;
+}
+
+.trend-bar {
+  height: 8px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--app-surface-muted);
+}
+
+.trend-fill {
+  height: 100%;
+  border-radius: inherit;
+  background: var(--ion-color-primary);
 }
 
 @media (min-width: 720px) {

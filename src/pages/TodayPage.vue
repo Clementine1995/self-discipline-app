@@ -39,6 +39,7 @@
               <IonLabel>
                 <h3>{{ habit.name }}</h3>
                 <p>{{ habit.reminderTime }} 提醒 · 每天重复</p>
+                <p v-if="getHabitPrompt(habit.id)" class="habit-prompt">{{ getHabitPrompt(habit.id) }}</p>
               </IonLabel>
               <IonButton
                 :fill="checkinStore.isHabitCheckedToday(habit.id) ? 'solid' : 'outline'"
@@ -71,7 +72,9 @@ import {
 import { computed } from 'vue';
 import { useHabitStore } from '@/stores/habitStore';
 import { useCheckinStore } from '@/stores/checkinStore';
-import { calculateCompletionRate } from '@/modules/stats/statsRules';
+import { buildHabitStats, calculateCompletionRate } from '@/modules/stats/statsRules';
+import { findTriggeredPunishment } from '@/modules/punishments/punishmentRules';
+import { findUnlockedReward } from '@/modules/rewards/rewardRules';
 
 const habitStore = useHabitStore();
 const checkinStore = useCheckinStore();
@@ -92,6 +95,9 @@ const todayLabel = computed(() =>
 const totalCount = computed(() => habitStore.habits.length);
 const completedCount = computed(() => checkinStore.todayCompletedCount);
 const completionRate = computed(() => calculateCompletionRate(completedCount.value, totalCount.value));
+const habitStatsMap = computed(() =>
+  new Map(habitStore.habits.map((habit) => [habit.id, buildHabitStats(habit, checkinStore.checkIns)])),
+);
 
 const toggleCheckIn = (habitId: string) => {
   if (checkinStore.isHabitCheckedToday(habitId)) {
@@ -100,5 +106,21 @@ const toggleCheckIn = (habitId: string) => {
   }
 
   checkinStore.checkInHabit(habitId);
+};
+
+const getHabitPrompt = (habitId: string) => {
+  const stats = habitStatsMap.value.get(habitId);
+
+  if (!stats) {
+    return '';
+  }
+
+  if (checkinStore.isHabitCheckedToday(habitId)) {
+    const reward = findUnlockedReward(stats.currentStreak);
+    return reward?.message ?? '';
+  }
+
+  const punishment = findTriggeredPunishment(stats.totalFailures);
+  return punishment?.message ?? '';
 };
 </script>

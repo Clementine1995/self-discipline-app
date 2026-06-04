@@ -50,6 +50,7 @@
           </IonList>
 
           <div v-if="errorMessage" class="form-error">{{ errorMessage }}</div>
+          <div v-if="reminderMessage" class="form-note">{{ reminderMessage }}</div>
 
           <IonButton expand="block" class="primary-action" :disabled="isSaving" @click="saveHabit">
             {{ isSaving ? '保存中...' : '保存任务' }}
@@ -101,10 +102,12 @@ const isEditing = computed(() => Boolean(route.params.id));
 const habitId = computed(() => String(route.params.id || ''));
 const draft = reactive(createEmptyHabitDraft());
 const errorMessage = ref('');
+const reminderMessage = ref('');
 const isSaving = ref(false);
 
 onIonViewWillEnter(async () => {
   errorMessage.value = '';
+  reminderMessage.value = '';
   await habitStore.loadHabits();
 
   if (!isEditing.value) {
@@ -137,6 +140,7 @@ const saveHabit = async () => {
 
     router.replace('/tasks');
   } finally {
+    reminderMessage.value = habitStore.reminderMessage;
     isSaving.value = false;
   }
 };
@@ -151,6 +155,7 @@ const deleteHabit = async () => {
     await habitStore.deleteHabit(habitId.value);
     router.replace('/tasks');
   } finally {
+    reminderMessage.value = habitStore.reminderMessage;
     isSaving.value = false;
   }
 };
