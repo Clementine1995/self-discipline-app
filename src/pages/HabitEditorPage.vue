@@ -205,7 +205,7 @@ const saveHabit = async () => {
       await habitStore.createHabit(draft);
     }
 
-    router.replace('/tasks');
+    await router.replace({ path: '/tasks', query: { reminder: '1' } });
   } finally {
     reminderMessage.value = habitStore.reminderMessage;
     isSaving.value = false;
@@ -253,7 +253,7 @@ const deleteHabit = async () => {
   isSaving.value = true;
   try {
     await habitStore.deleteHabit(habitId.value);
-    router.replace('/tasks');
+    await router.replace({ path: '/tasks', query: { reminder: '1' } });
   } finally {
     reminderMessage.value = habitStore.reminderMessage;
     isSaving.value = false;

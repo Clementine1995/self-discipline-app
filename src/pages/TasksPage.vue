@@ -23,7 +23,10 @@
             <p>本地保存，后续可替换为 Preferences、SQLite 或后端同步。</p>
           </div>
 
-          <div v-if="habitStore.reminderMessage" class="form-note">{{ habitStore.reminderMessage }}</div>
+          <div v-if="habitStore.reminderMessage" class="reminder-diagnostic">
+            <strong>提醒排查结果</strong>
+            <p>{{ habitStore.reminderMessage }}</p>
+          </div>
 
           <div v-if="habitStore.isLoading" class="empty-state">正在读取任务...</div>
           <div v-else-if="habitStore.habits.length === 0" class="empty-state empty-guide">
@@ -46,6 +49,14 @@
         </section>
       </main>
     </IonContent>
+
+    <IonToast
+      :is-open="toast.isOpen"
+      :message="toast.message"
+      :duration="6500"
+      position="top"
+      @didDismiss="toast.isOpen = false"
+    />
   </IonPage>
 </template>
 
@@ -61,18 +72,33 @@ import {
   IonList,
   IonPage,
   IonTitle,
+  IonToast,
   IonToolbar,
   onIonViewWillEnter,
 } from '@ionic/vue';
 import { addOutline, sparklesOutline } from 'ionicons/icons';
+import { reactive } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
 import { formatRepeatRule } from '@/modules/habits/repeatRules';
 import { useHabitStore } from '@/stores/habitStore';
 
+const route = useRoute();
+const router = useRouter();
 const habitStore = useHabitStore();
 const addIcon = addOutline;
 const sparklesIcon = sparklesOutline;
+const toast = reactive({
+  isOpen: false,
+  message: '',
+});
 
-onIonViewWillEnter(() => {
-  habitStore.loadHabits();
+onIonViewWillEnter(async () => {
+  await habitStore.loadHabits();
+
+  if (route.query.reminder === '1' && habitStore.reminderMessage) {
+    toast.message = habitStore.reminderMessage;
+    toast.isOpen = true;
+    await router.replace({ path: '/tasks' });
+  }
 });
 </script>

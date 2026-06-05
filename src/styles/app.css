@@ -112,6 +112,27 @@ ion-label p {
   background: var(--app-surface-muted);
 }
 
+.reminder-diagnostic {
+  display: grid;
+  gap: 6px;
+  margin: 0 16px 14px;
+  padding: 12px 14px;
+  border: 1px solid color-mix(in srgb, var(--ion-color-warning) 55%, var(--app-border));
+  border-radius: 16px;
+  background: color-mix(in srgb, var(--ion-color-warning) 12%, var(--app-surface));
+}
+
+.reminder-diagnostic strong {
+  color: var(--ion-text-color);
+  font-size: 14px;
+}
+
+.reminder-diagnostic p {
+  margin: 0;
+  color: var(--app-text-muted);
+  line-height: 1.55;
+}
+
 .task-list,
 .plain-list,
 .form-list {
