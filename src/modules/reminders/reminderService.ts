@@ -103,14 +103,25 @@ export const syncDailyReminder = async (habit: Habit): Promise<ReminderSyncResul
     }
 
     await ensureReminderChannel();
-    await scheduleDailyReminder(habit);
+    const upcomingReminderDates = getUpcomingReminderDates(habit);
+
+    if (upcomingReminderDates.length === 0) {
+      return {
+        scheduled: false,
+        permissionGranted: true,
+        message: `${habit.reminderTime} 的${formatRepeatRule(habit.repeatRule)}没有算出未来提醒时间，请检查重复规则是否包含接下来的日期`,
+      };
+    }
+
+    const scheduledIds = await scheduleDailyReminder(habit, upcomingReminderDates);
     const pendingCount = await getPendingReminderCount(habit.id);
     const exactAlarm = await checkExactAlarmStatus();
+    const nextReminderText = formatReminderDate(upcomingReminderDates[0]);
 
     return {
       scheduled: true,
       permissionGranted: true,
-      message: `${habit.reminderTime} 的${formatRepeatRule(habit.repeatRule)}提醒已设置，已排入未来 ${pendingCount ?? 0} 条提醒${exactAlarm === 'denied' ? '；通知权限已开，但准点触发还需要允许“闹钟与提醒”' : ''}`,
+      message: `${habit.reminderTime} 的${formatRepeatRule(habit.repeatRule)}提醒已设置；已计算 ${upcomingReminderDates.length} 条，系统确认 ${pendingCount ?? 0} 条，下一次 ${nextReminderText}${scheduledIds.length === 0 ? '；但 native schedule 没返回 id' : ''}${exactAlarm === 'denied' ? '；通知权限已开，但准点触发还需要允许“闹钟与提醒”' : ''}`,
     };
   } catch {
     return {
@@ -153,30 +164,31 @@ export const cancelDailyReminder = async (habitId: string) => {
   }
 };
 
-export const scheduleDailyReminder = async (habit: Habit) => {
+export const scheduleDailyReminder = async (habit: Habit, reminderDates = getUpcomingReminderDates(habit)) => {
   if (!habit.reminderEnabled) {
-    return;
+    return [];
   }
 
-  const upcomingReminderDates = getUpcomingReminderDates(habit);
-
-  if (upcomingReminderDates.length === 0) {
-    return;
+  if (reminderDates.length === 0) {
+    return [];
   }
 
-  await LocalNotifications.schedule({
-    notifications: upcomingReminderDates.map((at, slot) => ({
+  const result = await LocalNotifications.schedule({
+    notifications: reminderDates.map((at, slot) => ({
       id: getHabitNotificationId(habit.id, slot),
       title: '自律打卡提醒',
       body: `现在是 ${habit.name} 的时间，别装没看见。`,
       channelId: reminderChannelId,
       autoCancel: true,
       schedule: {
-        at,
+        // Android native parses the bridge payload as an ISO string even though the TS type is Date.
+        at: at.toISOString() as unknown as Date,
         allowWhileIdle: true,
       },
     })),
   });
+
+  return result.notifications.map((notification) => notification.id);
 };
 
 export const sendTestReminder = async (): Promise<ReminderSyncResult> => {
@@ -250,8 +262,8 @@ const checkExactAlarmStatus = async () => {
 const getPendingReminderCount = async (habitId?: string) => {
   try {
     const pending = await LocalNotifications.getPending();
-    const notificationIds = habitId ? new Set(getHabitNotificationIds(habitId)) : undefined;
-    return pending.notifications.filter((notification) => !notificationIds || notificationIds.has(notification.id)).length;
+    const notificationIds = habitId ? new Set(getHabitNotificationIds(habitId).map(String)) : undefined;
+    return pending.notifications.filter((notification) => !notificationIds || notificationIds.has(String(notification.id))).length;
   } catch {
     return undefined;
   }
@@ -301,6 +313,14 @@ const getHabitNotificationIds = (habitId: string) =>
   ].filter((id, index, ids) => ids.indexOf(id) === index);
 
 const getHabitNotificationId = (habitId: string, slot: number) => Math.abs(hashString(`${habitId}:${slot}`));
+
+const formatReminderDate = (date: Date) =>
+  date.toLocaleString('zh-CN', {
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
 
 const hashString = (value: string) =>
   value.split('').reduce((hash, char) => (hash << 5) - hash + char.charCodeAt(0), 0);
