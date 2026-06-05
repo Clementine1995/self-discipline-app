@@ -2,6 +2,8 @@ import { LocalNotifications } from '@capacitor/local-notifications';
 import type { Habit, Weekday } from '@/types/habit';
 import { formatRepeatRule, getRepeatRuleWeekdays } from '@/modules/habits/repeatRules';
 
+const reminderChannelId = 'habit-reminders';
+
 export type ReminderSyncResult = {
   scheduled: boolean;
   permissionGranted: boolean;
@@ -11,17 +13,23 @@ export type ReminderSyncResult = {
 export type ReminderPermissionStatus = {
   supported: boolean;
   display: string;
+  exactAlarm?: string;
+  pendingCount?: number;
   message: string;
 };
 
 export const getReminderPermissionStatus = async (): Promise<ReminderPermissionStatus> => {
   try {
     const permission = await LocalNotifications.checkPermissions();
+    const exactAlarm = await checkExactAlarmStatus();
+    const pendingCount = await getPendingReminderCount();
 
     return {
       supported: true,
       display: permission.display,
-      message: getPermissionMessage(permission.display),
+      exactAlarm,
+      pendingCount,
+      message: getPermissionMessage(permission.display, exactAlarm, pendingCount),
     };
   } catch {
     return {
@@ -40,6 +48,34 @@ export const requestReminderPermission = async () => {
   }
 
   return LocalNotifications.requestPermissions();
+};
+
+export const openExactAlarmSettings = async (): Promise<ReminderSyncResult> => {
+  try {
+    const status = await LocalNotifications.checkExactNotificationSetting();
+
+    if (status.exact_alarm === 'granted') {
+      return {
+        scheduled: false,
+        permissionGranted: true,
+        message: '精确闹钟已允许',
+      };
+    }
+
+    await LocalNotifications.changeExactNotificationSetting();
+
+    return {
+      scheduled: false,
+      permissionGranted: false,
+      message: '已打开系统精确闹钟设置，开启后请回到 App 重新保存任务提醒',
+    };
+  } catch {
+    return {
+      scheduled: false,
+      permissionGranted: false,
+      message: '当前设备不支持打开精确闹钟设置',
+    };
+  }
 };
 
 export const syncDailyReminder = async (habit: Habit): Promise<ReminderSyncResult> => {
@@ -64,12 +100,15 @@ export const syncDailyReminder = async (habit: Habit): Promise<ReminderSyncResul
       };
     }
 
+    await ensureReminderChannel();
     await scheduleDailyReminder(habit);
+    const pendingCount = await getPendingReminderCount(habit.id);
+    const exactAlarm = await checkExactAlarmStatus();
 
     return {
       scheduled: true,
       permissionGranted: true,
-      message: `${habit.reminderTime} 的${formatRepeatRule(habit.repeatRule)}提醒已设置`,
+      message: `${habit.reminderTime} 的${formatRepeatRule(habit.repeatRule)}提醒已设置，已排入 ${pendingCount ?? 0} 条提醒${exactAlarm === 'denied' ? '；如果仍不响，请在系统设置里允许精确闹钟' : ''}`,
     };
   } catch {
     return {
@@ -101,12 +140,14 @@ export const scheduleDailyReminder = async (habit: Habit) => {
   await LocalNotifications.schedule({
     notifications: weekdays.map((weekday) => ({
       id: getHabitNotificationId(habit.id, weekday),
-        title: '自律打卡提醒',
-        body: `现在是 ${habit.name} 的时间`,
-        schedule: {
-          on: { weekday: toCapacitorWeekday(weekday), hour, minute },
-          repeats: true,
-        },
+      title: '自律打卡提醒',
+      body: `现在是 ${habit.name} 的时间，别装没看见。`,
+      channelId: reminderChannelId,
+      autoCancel: true,
+      schedule: {
+        on: { weekday: toCapacitorWeekday(weekday), hour, minute, second: 0 },
+        allowWhileIdle: true,
+      },
     })),
   });
 };
@@ -123,14 +164,18 @@ export const sendTestReminder = async (): Promise<ReminderSyncResult> => {
       };
     }
 
+    await ensureReminderChannel();
     await LocalNotifications.schedule({
       notifications: [
         {
           id: 900001,
           title: '自律打卡测试提醒',
           body: '如果你看到这条通知，说明本地提醒可以工作。',
+          channelId: reminderChannelId,
+          autoCancel: true,
           schedule: {
             at: new Date(Date.now() + 1000),
+            allowWhileIdle: true,
           },
         },
       ],
@@ -150,9 +195,48 @@ export const sendTestReminder = async (): Promise<ReminderSyncResult> => {
   }
 };
 
-const getPermissionMessage = (display: string) => {
+const ensureReminderChannel = async () => {
+  try {
+    await LocalNotifications.createChannel({
+      id: reminderChannelId,
+      name: '打卡提醒',
+      description: '用于每天到点提醒你执行打卡任务',
+      importance: 5,
+      visibility: 1,
+      lights: true,
+      vibration: true,
+    });
+  } catch {
+    // Notification channels are Android-only; web preview can ignore this.
+  }
+};
+
+const checkExactAlarmStatus = async () => {
+  try {
+    const status = await LocalNotifications.checkExactNotificationSetting();
+    return status.exact_alarm;
+  } catch {
+    return undefined;
+  }
+};
+
+const getPendingReminderCount = async (habitId?: string) => {
+  try {
+    const pending = await LocalNotifications.getPending();
+    const notificationIds = habitId ? new Set(getHabitNotificationIds(habitId)) : undefined;
+    return pending.notifications.filter((notification) => !notificationIds || notificationIds.has(notification.id)).length;
+  } catch {
+    return undefined;
+  }
+};
+
+const getPermissionMessage = (display: string, exactAlarm?: string, pendingCount?: number) => {
   if (display === 'granted') {
-    return '通知权限已开启';
+    if (exactAlarm === 'denied') {
+      return `通知权限已开启，但精确闹钟未允许；当前已排入 ${pendingCount ?? 0} 条提醒，可能不会准点响`;
+    }
+
+    return `通知权限已开启，当前已排入 ${pendingCount ?? 0} 条提醒`;
   }
 
   if (display === 'denied') {

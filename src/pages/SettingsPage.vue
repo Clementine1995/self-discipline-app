@@ -19,6 +19,15 @@
           <div class="action-row">
             <IonButton expand="block" @click="sendReminderTest">发送测试通知</IonButton>
             <IonButton expand="block" fill="outline" @click="refreshReminderStatus">刷新权限状态</IonButton>
+            <IonButton
+              v-if="reminderStatus.exactAlarm === 'denied'"
+              expand="block"
+              fill="outline"
+              color="warning"
+              @click="openExactAlarm"
+            >
+              打开精确闹钟设置
+            </IonButton>
           </div>
         </section>
 
@@ -143,7 +152,7 @@ import { themeConfigs } from '@/modules/themes/themeConfig';
 import { toneProfiles } from '@/modules/tones/toneProfiles';
 import { toneMemePacks } from '@/modules/tones/toneMemePacks';
 import { renderTonePrompt } from '@/modules/tones/toneCopy';
-import { getReminderPermissionStatus, sendTestReminder } from '@/modules/reminders/reminderService';
+import { getReminderPermissionStatus, openExactAlarmSettings, sendTestReminder } from '@/modules/reminders/reminderService';
 import { clearLocalData, exportLocalDataAsJson } from '@/modules/data/dataBackupService';
 import { useAppStore } from '@/stores/appStore';
 import { useCheckinStore } from '@/stores/checkinStore';
@@ -158,6 +167,8 @@ const dataMessage = ref('');
 const reminderStatus = reactive({
   supported: false,
   display: 'unknown',
+  exactAlarm: undefined as string | undefined,
+  pendingCount: undefined as number | undefined,
   message: '正在读取通知权限...',
 });
 const intensityLabelMap: Record<ToneIntensity, string> = {
@@ -208,6 +219,12 @@ const refreshReminderStatus = async () => {
 
 const sendReminderTest = async () => {
   const result = await sendTestReminder();
+  reminderMessage.value = result.message;
+  await refreshReminderStatus();
+};
+
+const openExactAlarm = async () => {
+  const result = await openExactAlarmSettings();
   reminderMessage.value = result.message;
   await refreshReminderStatus();
 };

@@ -91,17 +91,40 @@
           </div>
         </section>
 
+        <section v-if="habit" class="section-block">
+          <div class="section-heading">
+            <h2>任务操作</h2>
+            <p>不需要这个任务了，可以直接从这里删除。</p>
+          </div>
+
+          <div class="action-row">
+            <IonButton expand="block" :router-link="`/tasks/${habit.id}/edit`">编辑任务</IonButton>
+            <IonButton expand="block" fill="outline" color="danger" @click="showDeleteConfirm = true">
+              删除任务
+            </IonButton>
+          </div>
+        </section>
+
         <section v-if="!habit && !habitStore.isLoading" class="section-block">
           <div class="empty-state">没有找到这个任务，可能已经被删除。</div>
         </section>
       </main>
     </IonContent>
+
+    <IonAlert
+      :is-open="showDeleteConfirm"
+      header="删除这个任务？"
+      message="删除后，这个任务和对应的打卡记录都会从本地移除。"
+      :buttons="deleteAlertButtons"
+      @didDismiss="showDeleteConfirm = false"
+    />
   </IonPage>
 </template>
 
 <script setup lang="ts">
 import { computed, ref } from 'vue';
 import {
+  IonAlert,
   IonBackButton,
   IonButton,
   IonButtons,
@@ -112,7 +135,7 @@ import {
   IonToolbar,
   onIonViewWillEnter,
 } from '@ionic/vue';
-import { useRoute } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 import { useHabitStore } from '@/stores/habitStore';
 import { useCheckinStore } from '@/stores/checkinStore';
 import { buildHabitSevenDayStatus, buildHabitStats } from '@/modules/stats/statsRules';
@@ -123,12 +146,27 @@ import { buildHabitPointProgress } from '@/modules/points/pointRules';
 import type { HabitDayStatus } from '@/modules/stats/statsRules';
 
 const route = useRoute();
+const router = useRouter();
 const appStore = useAppStore();
 const habitStore = useHabitStore();
 const checkinStore = useCheckinStore();
 const habitId = computed(() => String(route.params.id || ''));
 const statusMessage = ref('');
+const showDeleteConfirm = ref(false);
 const habit = computed(() => habitStore.getHabitById(habitId.value));
+const deleteAlertButtons = [
+  {
+    text: '取消',
+    role: 'cancel',
+  },
+  {
+    text: '删除',
+    role: 'destructive',
+    handler: () => {
+      void deleteHabit();
+    },
+  },
+];
 const stats = computed(() =>
   habit.value
     ? buildHabitStats(habit.value, checkinStore.checkIns)
@@ -190,5 +228,14 @@ const toggleHistoryDate = async (date: string, checked: boolean) => {
 
   await checkinStore.checkInHabit(habit.value.id, date);
   statusMessage.value = `${formatDay(date)} 已补打卡`;
+};
+
+const deleteHabit = async () => {
+  if (!habit.value) {
+    return;
+  }
+
+  await habitStore.deleteHabit(habit.value.id);
+  router.replace('/tasks');
 };
 </script>
