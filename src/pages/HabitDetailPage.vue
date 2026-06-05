@@ -122,7 +122,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed, onMounted, onUnmounted, ref } from 'vue';
 import {
   IonAlert,
   IonBackButton,
@@ -194,6 +194,21 @@ const pointProgress = computed(() =>
         totalPoints: 0,
       },
 );
+
+const handleNativeBack = (event: Event) => {
+  const backEvent = event as CustomEvent<{ register: (priority: number, handler: () => void) => void }>;
+  backEvent.detail.register(100, () => {
+    void router.replace('/tasks');
+  });
+};
+
+onMounted(() => {
+  document.addEventListener('ionBackButton', handleNativeBack);
+});
+
+onUnmounted(() => {
+  document.removeEventListener('ionBackButton', handleNativeBack);
+});
 
 onIonViewWillEnter(() => {
   statusMessage.value = '';

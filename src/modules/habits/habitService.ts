@@ -21,7 +21,7 @@ export type HabitWriteResult = {
 
 export const createEmptyHabitDraft = (): HabitDraft => ({
   name: '',
-  reminderTime: '21:30',
+  reminderTime: getCurrentReminderTime(),
   reminderEnabled: true,
   repeatRule: defaultRepeatRule,
   rewardText: '',
@@ -124,13 +124,20 @@ export const validateHabitDraft = (draft: HabitDraft) => {
 
 const normalizeHabitDraft = (draft: HabitDraft): HabitDraft => ({
   name: draft.name.trim(),
-  reminderTime: draft.reminderTime || '21:30',
+  reminderTime: draft.reminderTime || getCurrentReminderTime(),
   reminderEnabled: draft.reminderEnabled,
   repeatRule: normalizeRepeatRule(draft.repeatRule),
   rewardText: draft.rewardText.trim(),
   punishmentText: draft.punishmentText.trim(),
   failureThreshold: Math.max(1, Number(draft.failureThreshold) || 1),
 });
+
+const getCurrentReminderTime = () => {
+  const now = new Date();
+  const hour = String(now.getHours()).padStart(2, '0');
+  const minute = String(now.getMinutes()).padStart(2, '0');
+  return `${hour}:${minute}`;
+};
 
 const normalizeHabit = (habit: Habit): Habit => ({
   ...habit,
