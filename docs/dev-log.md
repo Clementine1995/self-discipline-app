@@ -14,7 +14,7 @@ This file keeps the project handoff context inside the repository so another mac
 - Stack: Vue 3, Ionic Vue, Capacitor, Pinia, pnpm.
 - Target: local-first Android MVP.
 - Remote: `https://github.com/Clementine1995/self-discipline-app.git`.
-- Latest known commit after the 2026-06-04 session: `c960c4f Add AI review planning repeat rules themes and points`.
+- Latest known commit after the 2026-06-05 sync: `2b185b8 Polish stats and reward shop interactions`.
 
 ## Implemented
 
@@ -34,6 +34,9 @@ This file keeps the project handoff context inside the repository so another mac
 - Repeat rules: daily, weekdays, weekends, and selected weekdays.
 - Points system: check-in points, milestone bonus, level progress.
 - Reward shop v1: local reward items, point redemption, and redemption history.
+- First-run habit list now starts empty; Today and Tasks show onboarding prompts so users create their own check-in tasks.
+- Theme choices now recommend and sync matching tone profiles; tone profiles are more granular than visual themes.
+- Tone, reward, punishment, recovery, review, weekly report, and reward shop copy has been sharpened for a bolder personal-use discipline style.
 
 ## Important Notes
 

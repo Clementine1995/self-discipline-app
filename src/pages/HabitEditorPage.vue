@@ -98,18 +98,27 @@
             color="danger"
             class="secondary-action"
             :disabled="isSaving"
-            @click="deleteHabit"
+            @click="showDeleteConfirm = true"
           >
             删除任务
           </IonButton>
         </section>
       </main>
     </IonContent>
+
+    <IonAlert
+      :is-open="showDeleteConfirm"
+      header="删除这个任务？"
+      message="删除后，这个任务和对应的打卡记录都会从本地移除。"
+      :buttons="deleteAlertButtons"
+      @didDismiss="showDeleteConfirm = false"
+    />
   </IonPage>
 </template>
 
 <script setup lang="ts">
 import {
+  IonAlert,
   IonBackButton,
   IonButton,
   IonButtons,
@@ -142,6 +151,20 @@ const draft = reactive(createEmptyHabitDraft());
 const errorMessage = ref('');
 const reminderMessage = ref('');
 const isSaving = ref(false);
+const showDeleteConfirm = ref(false);
+const deleteAlertButtons = [
+  {
+    text: '取消',
+    role: 'cancel',
+  },
+  {
+    text: '删除',
+    role: 'destructive',
+    handler: () => {
+      void deleteHabit();
+    },
+  },
+];
 const repeatRuleOptions: { type: RepeatRule['type']; label: string; description: string }[] = [
   { type: 'daily', label: '每天', description: '每天都出现在今日任务里。' },
   { type: 'weekdays', label: '工作日', description: '周一到周五执行。' },

@@ -104,18 +104,18 @@ const findEasiestFailedHabit = (habitSummaries: AiWeeklyHabitSummary[]) =>
 
 const buildWeeklySummary = (completedCount: number, scheduledCount: number, completionRate: number) => {
   if (scheduledCount === 0) {
-    return '本周还没有可统计的任务，先放一个每天都能执行的小习惯进来。';
+    return '本周还没有可统计的任务，先放一个每天都逃不掉的小习惯进来。';
   }
 
   if (completionRate >= 90) {
-    return `本周完成 ${completedCount}/${scheduledCount}，节奏很稳，下周重点是保持而不是加码。`;
+    return `本周完成 ${completedCount}/${scheduledCount}，执行很稳，下周继续守规则，别急着加码。`;
   }
 
   if (completionRate >= 60) {
-    return `本周完成 ${completedCount}/${scheduledCount}，已经有基础稳定性，下周先修补最容易掉线的一项。`;
+    return `本周完成 ${completedCount}/${scheduledCount}，基础还在，但有漏洞，下周先收拾最容易掉线的一项。`;
   }
 
-  return `本周完成 ${completedCount}/${scheduledCount}，任务量可能偏重，下周先把标准降到能连续执行。`;
+  return `本周完成 ${completedCount}/${scheduledCount}，执行已经松了，下周先降标准，把连续性抢回来。`;
 };
 
 const buildNextWeekSuggestions = (
@@ -124,23 +124,23 @@ const buildNextWeekSuggestions = (
   easiestFailedHabit?: AiWeeklyHabitSummary,
 ) => {
   if (!mostStableHabit && !easiestFailedHabit) {
-    return ['先创建 1 个低门槛任务，并给它设置固定提醒时间。'];
+    return ['先创建 1 个低门槛任务，并给它设置固定提醒时间，别让系统空着。'];
   }
 
   const suggestions: string[] = [];
 
   if (mostStableHabit) {
-    suggestions.push(`保留「${mostStableHabit.habitName}」的当前节奏，它是本周最稳定的锚点。`);
+    suggestions.push(`保留「${mostStableHabit.habitName}」的当前节奏，它是本周最听话的锚点。`);
   }
 
   if (easiestFailedHabit) {
-    suggestions.push(`优先调整「${easiestFailedHabit.habitName}」，下周先改成更小、更早、更容易开始的版本。`);
+    suggestions.push(`优先调整「${easiestFailedHabit.habitName}」，它最容易失控，下周先改成更小、更早、更容易开始的版本。`);
   }
 
   if (completionRate < 60) {
-    suggestions.push('下周不要新增任务，先把现有任务压到可以完成的规模。');
+    suggestions.push('下周不准新增任务，先把现有任务压到可以完成的规模。');
   } else {
-    suggestions.push('下周只微调一个任务，不要同时改太多规则。');
+    suggestions.push('下周只微调一个任务，别同时改太多规则给自己找借口。');
   }
 
   return suggestions;

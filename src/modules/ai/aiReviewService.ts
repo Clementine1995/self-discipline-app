@@ -106,20 +106,20 @@ const buildSummary = (
   toneId: ToneId,
 ) => {
   if (totalHabits === 0) {
-    return '还没有任务。先放一个很小的习惯进来，复盘才有抓手。';
+    return '还没有任务。先放一个小到不能赖掉的习惯进来，系统才有东西盯。';
   }
 
   if (completionRate === 100) {
     return toneId === 'rational'
       ? `今日完成 ${completedCount}/${totalHabits}，执行结果完整。`
-      : `今天 ${completedCount} 个任务全部完成，节奏很稳。`;
+      : `今天 ${completedCount} 个任务全部拿下，表现合格，明天继续。`;
   }
 
   if (completionRate >= 60) {
-    return `今日完成 ${completedCount}/${totalHabits}，还有 ${unfinishedCount} 个任务需要收尾。`;
+    return `今日完成 ${completedCount}/${totalHabits}，还有 ${unfinishedCount} 个缺口没收，别装看不见。`;
   }
 
-  return `今日完成 ${completedCount}/${totalHabits}，先把剩下任务降到最小可执行版本。`;
+  return `今日完成 ${completedCount}/${totalHabits}，执行明显掉线，先把剩下任务降到最小版本补回来。`;
 };
 
 const buildRiskItem = (habit: Habit, snapshot: AiReviewHabitSnapshot): AiReviewRiskItem => {
@@ -129,7 +129,7 @@ const buildRiskItem = (habit: Habit, snapshot: AiReviewHabitSnapshot): AiReviewR
     return {
       ...snapshot,
       level: 'high',
-      reason: `今天未完成后，失败次数可能达到 ${habit.failureThreshold} 次阈值。`,
+      reason: `今天再不补，失败次数可能撞上 ${habit.failureThreshold} 次阈值。`,
     };
   }
 
@@ -137,14 +137,14 @@ const buildRiskItem = (habit: Habit, snapshot: AiReviewHabitSnapshot): AiReviewR
     return {
       ...snapshot,
       level: 'medium',
-      reason: '已经有失败记录，今天适合用降级版本保住连续感。',
+      reason: '已经有失败记录，今天别硬撑，用降级版本把链条抢回来。',
     };
   }
 
   return {
     ...snapshot,
     level: 'low',
-    reason: '今天还未打卡，尽量在睡前补一个最小动作。',
+    reason: '今天还未打卡，睡前至少补一个最小动作，别让它过夜。',
   };
 };
 
@@ -154,19 +154,19 @@ const buildTomorrowSuggestions = (
   completionRate: number,
 ) => {
   if (unfinishedHabits.length === 0) {
-    return ['明天保持同一提醒时间，不额外加码。', '如果状态很好，只给一个任务提高一点点标准。'];
+    return ['明天保持同一提醒时间，不准乱加码。', '如果状态很好，只允许给一个任务提高一点点标准。'];
   }
 
   const highRiskNames = riskItems.filter((item) => item.level === 'high').map((item) => item.habitName);
   const focusNames = (highRiskNames.length > 0 ? highRiskNames : unfinishedHabits.map((item) => item.habitName)).slice(0, 2);
   const suggestions = [`明天优先处理：${focusNames.join('、')}。`];
 
-  suggestions.push('给每个未完成任务准备一个 2 分钟版本，先启动再说。');
+  suggestions.push('给每个未完成任务准备一个 2 分钟版本，先启动，别等状态。');
 
   if (completionRate < 60) {
-    suggestions.push('明天不要新增任务，先把现有清单压到能完成。');
+    suggestions.push('明天不准新增任务，先把现有清单压到能完成。');
   } else {
-    suggestions.push('完成率已经过半，明天把最容易断掉的一项提前到白天。');
+    suggestions.push('完成率已经过半，明天把最容易断掉的一项提前到白天，别留到晚上求饶。');
   }
 
   return suggestions;

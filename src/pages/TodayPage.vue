@@ -39,8 +39,10 @@
           </div>
 
           <div v-if="habitStore.isLoading" class="empty-state">正在读取任务...</div>
-          <div v-else-if="habitStore.habits.length === 0" class="empty-state">
-            今天还没有任务，先去新增一个。
+          <div v-else-if="habitStore.habits.length === 0" class="empty-state empty-guide">
+            <strong>还没有打卡任务</strong>
+            <p>先添加一件你真正想坚持的小事，比如阅读、睡前整理或轻运动。</p>
+            <IonButton size="small" router-link="/tasks/new">添加第一个任务</IonButton>
           </div>
           <div v-else-if="todayHabits.length === 0" class="empty-state">
             今天没有需要执行的任务，可以休息一下。
@@ -158,7 +160,7 @@ const themeFeedback = computed(() => {
     return {
       mark: `${completionRate.value}%`,
       title: completedCount.value > 0 ? '连击能量已充入' : '今日副本待开启',
-      message: totalCount.value === 0 ? '今天没有任务，休整也是节奏的一部分。' : '完成一项就点亮一格，今天先把进度条推起来。',
+      message: totalCount.value === 0 ? '今天没有任务，先别让系统闲着太久。' : '完成一项就点亮一格，别让进度条一直趴着。',
     };
   }
 
@@ -174,7 +176,7 @@ const themeFeedback = computed(() => {
     return {
       mark: `${unfinishedCount.value}`,
       title: unfinishedCount.value === 0 ? '嗯，今天没让我失望' : '还剩一点，别装看不见',
-      message: unfinishedCount.value === 0 ? '记录很漂亮，继续保持这个节奏。' : '先完成最小版本也行，但别把缺口留到明天。',
+      message: unfinishedCount.value === 0 ? '记录很漂亮，我会记住你这次听话。' : '先完成最小版本也行，但别想把缺口偷偷留到明天。',
     };
   }
 
@@ -182,7 +184,7 @@ const themeFeedback = computed(() => {
     return {
       mark: `${completionRate.value}%`,
       title: completedCount.value > 0 ? '勉强算你有点行动力' : '不会今天还没开始吧',
-      message: totalCount.value === 0 ? '今天没任务，那就先放你一马。' : '先打掉一个任务，剩下的再慢慢收拾。',
+      message: totalCount.value === 0 ? '今天没任务，那就先放你一马。' : '先打掉一个任务，别让清单继续嘲笑你。',
     };
   }
 
@@ -190,7 +192,7 @@ const themeFeedback = computed(() => {
     return {
       mark: `${unfinishedCount.value}`,
       title: unfinishedCount.value === 0 ? '今日指令完成，表现合格' : '指令尚未完成',
-      message: unfinishedCount.value === 0 ? '保持记录，明天继续听话执行。' : '选择一个任务，执行最低版本，完成后再离开。',
+      message: unfinishedCount.value === 0 ? '保持记录，明天继续听话执行。' : '选择一个任务，执行最低版本，完成前不许假装自由。',
     };
   }
 
@@ -205,7 +207,7 @@ const themeFeedback = computed(() => {
   return {
     mark: `${completedCount.value}/${totalCount.value}`,
     title: completedCount.value === totalCount.value && totalCount.value > 0 ? '今天的节奏很稳' : '按自己的节奏来',
-    message: totalCount.value === 0 ? '今天没有需要执行的任务。' : '不用把一天塞满，先把该做的这一格填上。',
+    message: totalCount.value === 0 ? '今天没有需要执行的任务。' : '不用把一天塞满，但该做的这一格别空着。',
   };
 });
 const habitStatsMap = computed(() =>
@@ -226,7 +228,7 @@ const toggleCheckIn = async (habitId: string) => {
   const reward = stats ? findUnlockedReward(stats.currentStreak) : undefined;
   const message = reward
     ? renderTonePrompt(appStore.toneId, 'reward', reward.message)
-    : `${habit?.name ?? '任务'} 已完成，今天这一格补上了。`;
+    : `${habit?.name ?? '任务'} 已完成，今天这一格拿下了。`;
 
   if (reward) {
     rewardAlert.message = message;

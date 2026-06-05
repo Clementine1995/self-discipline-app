@@ -25,7 +25,7 @@
         <section class="section-block">
           <div class="section-heading">
             <h2>界面主题</h2>
-            <p>主题会影响颜色、反馈方式和整体情绪氛围。</p>
+            <p>主题会同步推荐语气，保持界面氛围和文案人格一致。</p>
           </div>
 
           <div class="option-stack">
@@ -41,7 +41,9 @@
               <span>
                 <strong>{{ theme.name }}</strong>
                 <small>{{ theme.description }}</small>
-                <small class="tone-meta">{{ theme.tagline }}</small>
+                <small class="tone-meta">
+                  {{ theme.tagline }} · 推荐语气：{{ getToneName(theme.recommendedToneId) }}
+                </small>
                 <span class="theme-preview-strip">
                   <i :style="{ backgroundColor: theme.accentColor }"></i>
                   <i :style="{ backgroundColor: theme.secondaryAccentColor }"></i>
@@ -57,7 +59,7 @@
         <section class="section-block">
           <div class="section-heading">
             <h2>文案语气</h2>
-            <p>默认温和，刺激型文案后续必须由用户主动开启。</p>
+            <p>语气比主题更细，可在当前主题的适配语气里继续调整。</p>
           </div>
 
           <div class="option-stack">
@@ -65,7 +67,11 @@
               v-for="tone in toneProfiles"
               :key="tone.id"
               class="option-row"
-              :class="{ selected: appStore.toneId === tone.id }"
+              :class="{
+                selected: appStore.toneId === tone.id,
+                recommended: tone.id === appStore.currentTheme.recommendedToneId,
+                compatible: isToneCompatible(tone.id),
+              }"
               type="button"
               @click="appStore.setTone(tone.id)"
             >
@@ -74,6 +80,8 @@
                 <small>{{ tone.description }}</small>
                 <small class="tone-meta">
                   {{ intensityLabelMap[tone.intensity] }} · {{ categoryLabelMap[tone.category] }}
+                  <template v-if="tone.id === appStore.currentTheme.recommendedToneId"> · 当前主题推荐</template>
+                  <template v-else-if="isToneCompatible(tone.id)"> · 当前主题适配</template>
                   <template v-if="tone.supportsMemeExtension"> · 支持梗包扩展</template>
                 </small>
                 <small>{{ tone.sample.reward }}</small>
@@ -93,7 +101,7 @@
         <section class="section-block">
           <div class="section-heading">
             <h2>文案素材包</h2>
-            <p>先内置低刺激素材包，后续可以扩展为可更新梗包或自定义文案包。</p>
+            <p>先内置轻刺素材包，后续可以扩展为更强势的梗包或自定义文案包。</p>
           </div>
 
           <div class="option-stack">
@@ -140,7 +148,7 @@ import { clearLocalData, exportLocalDataAsJson } from '@/modules/data/dataBackup
 import { useAppStore } from '@/stores/appStore';
 import { useCheckinStore } from '@/stores/checkinStore';
 import { useHabitStore } from '@/stores/habitStore';
-import type { ToneCategory, ToneIntensity, ToneMemePack, ToneMemePackSafetyLevel } from '@/types/tone';
+import type { ToneCategory, ToneId, ToneIntensity, ToneMemePack, ToneMemePackSafetyLevel } from '@/types/tone';
 
 const appStore = useAppStore();
 const habitStore = useHabitStore();
@@ -153,15 +161,17 @@ const reminderStatus = reactive({
   message: '正在读取通知权限...',
 });
 const intensityLabelMap: Record<ToneIntensity, string> = {
-  low: '低刺激',
-  medium: '中刺激',
-  high: '高刺激',
+  low: '轻压迫',
+  medium: '强督促',
+  high: '高压接管',
 };
 const categoryLabelMap: Record<ToneCategory, string> = {
   supportive: '陪伴',
   pressure: '督促',
   data: '理性',
-  playful: '轻松',
+  playful: '玩梗',
+  teasing: '挑衅',
+  command: '命令',
 };
 const safetyLevelLabelMap: Record<ToneMemePackSafetyLevel, string> = {
   safe: '安全',
@@ -175,10 +185,10 @@ onIonViewWillEnter(() => {
 });
 
 const rewardPreview = computed(() =>
-  renderTonePrompt(appStore.toneId, 'reward', '连续 7 天完成，可以安排一段认真放松时间。'),
+  renderTonePrompt(appStore.toneId, 'reward', '连续 7 天守住规则，允许安排一段真正属于自己的放松时间。'),
 );
 const punishmentPreview = computed(() =>
-  renderTonePrompt(appStore.toneId, 'punishment', '连续失败 3 次，减少一段娱乐时间并补一条复盘。'),
+  renderTonePrompt(appStore.toneId, 'punishment', '连续失败 3 次，暂停一段娱乐时间，补一条复盘，把原因写清楚。'),
 );
 
 const previewPackScenes = (pack: ToneMemePack) =>
@@ -186,6 +196,10 @@ const previewPackScenes = (pack: ToneMemePack) =>
     .map((scene) => pack.scenePrefixes[scene as keyof ToneMemePack['scenePrefixes']]?.[0])
     .filter(Boolean)
     .join(' / ');
+
+const getToneName = (toneId: ToneId) => toneProfiles.find((tone) => tone.id === toneId)?.name ?? '默认语气';
+
+const isToneCompatible = (toneId: ToneId) => appStore.currentTheme.compatibleToneIds.includes(toneId);
 
 const refreshReminderStatus = async () => {
   const nextStatus = await getReminderPermissionStatus();

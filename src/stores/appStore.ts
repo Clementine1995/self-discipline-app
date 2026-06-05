@@ -25,8 +25,14 @@ export const useAppStore = defineStore('app', {
       this.isLoaded = true;
     },
 
-    async setTheme(themeId: ThemeId) {
-      this.themeId = themeId;
+    async setTheme(themeId: ThemeId, syncRecommendedTone = true) {
+      const theme = getThemeConfig(themeId);
+      this.themeId = theme.id;
+
+      if (syncRecommendedTone) {
+        this.toneId = theme.recommendedToneId;
+      }
+
       await this.persistSettings();
     },
 

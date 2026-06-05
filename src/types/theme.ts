@@ -1,3 +1,5 @@
+import type { ToneId } from '@/types/tone';
+
 export type ThemeId =
   | 'fresh-schedule'
   | 'game-achievement'
@@ -25,6 +27,8 @@ export type ThemeConfig = {
   description: string;
   density: ThemeDensity;
   feedbackStyle: ThemeFeedbackStyle;
+  recommendedToneId: ToneId;
+  compatibleToneIds: ToneId[];
   accentColor: string;
   secondaryAccentColor: string;
   dangerColor: string;

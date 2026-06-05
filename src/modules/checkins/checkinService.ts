@@ -32,6 +32,11 @@ export const checkinService = {
       checkIns.filter((checkIn) => !(checkIn.habitId === habitId && checkIn.date === date)),
     );
   },
+
+  async deleteCheckInsForHabit(habitId: string) {
+    const checkIns = await checkinRepository.getAll();
+    await checkinRepository.saveAll(checkIns.filter((checkIn) => checkIn.habitId !== habitId));
+  },
 };
 
 const createId = () => {

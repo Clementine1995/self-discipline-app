@@ -159,6 +159,26 @@ ion-button {
   background: var(--app-surface);
 }
 
+.empty-guide {
+  display: grid;
+  gap: 10px;
+  align-items: start;
+}
+
+.empty-guide strong {
+  color: var(--ion-text-color);
+  font-size: 17px;
+}
+
+.empty-guide p {
+  margin: 0;
+}
+
+.empty-guide ion-button {
+  justify-self: start;
+  margin-top: 2px;
+}
+
 .form-error {
   padding: 12px 14px;
   color: #991b1b;
@@ -539,6 +559,14 @@ ion-button {
 .option-row.selected {
   border-color: var(--ion-color-primary);
   box-shadow: inset 0 0 0 1px var(--ion-color-primary);
+}
+
+.option-row.compatible:not(.selected) {
+  border-color: color-mix(in srgb, var(--ion-color-primary) 34%, var(--app-border));
+}
+
+.option-row.recommended .tone-meta {
+  color: var(--ion-color-primary);
 }
 
 .option-row-single {

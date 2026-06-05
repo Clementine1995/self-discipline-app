@@ -26,8 +26,13 @@
           <div v-if="habitStore.reminderMessage" class="form-note">{{ habitStore.reminderMessage }}</div>
 
           <div v-if="habitStore.isLoading" class="empty-state">正在读取任务...</div>
-          <div v-else-if="habitStore.habits.length === 0" class="empty-state">
-            还没有任务，先创建一个每天要坚持的小动作。
+          <div v-else-if="habitStore.habits.length === 0" class="empty-state empty-guide">
+            <strong>从自己的任务开始</strong>
+            <p>这里不会预置任务。把你想坚持的事添加进来，后续可以随时编辑或删除。</p>
+            <IonButton size="small" router-link="/tasks/new">
+              <IonIcon slot="start" :icon="addIcon" />
+              新建任务
+            </IonButton>
           </div>
 
           <IonList v-else lines="full" class="plain-list">

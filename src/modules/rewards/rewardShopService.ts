@@ -21,28 +21,28 @@ export const defaultRewardShopItems: RewardShopItem[] = [
   {
     id: 'rest-30',
     title: '认真放松 30 分钟',
-    description: '不补偿、不刷任务，允许自己完整休息一小段。',
+    description: '这是完成规则换来的休息，不是逃避任务的借口。',
     cost: 60,
     category: 'rest',
   },
   {
     id: 'coffee',
     title: '买一杯喜欢的饮品',
-    description: '给坚持一点真实反馈，别用过度消费替代奖励。',
+    description: '给坚持一点真实反馈，别用乱花钱假装奖励。',
     cost: 100,
     category: 'treat',
   },
   {
     id: 'episode',
     title: '看一集剧或视频',
-    description: '兑换后放心看，不要边看边内疚。',
+    description: '兑换后放心看，没兑换就别拿娱乐糊弄自己。',
     cost: 120,
     category: 'fun',
   },
   {
     id: 'small-gear',
     title: '添一个小装备',
-    description: '买一个能降低执行阻力的小物件，比如书签、杯子、运动小工具。',
+    description: '买一个能降低执行阻力的小物件，让明天少一个借口。',
     cost: 220,
     category: 'growth',
   },
@@ -72,7 +72,7 @@ export const redeemReward = async (
   if (state.availablePoints < item.cost) {
     return {
       success: false,
-      message: `可用积分不足，还差 ${item.cost - state.availablePoints} 分。`,
+      message: `可用积分不足，还差 ${item.cost - state.availablePoints} 分。先去完成任务，别提前透支奖励。`,
     };
   }
 
@@ -88,7 +88,7 @@ export const redeemReward = async (
 
   return {
     success: true,
-    message: `${item.title} 已兑换，记得好好享受这份奖励。`,
+    message: `${item.title} 已兑换。奖励已经批准，好好享受，然后继续守规则。`,
     redemption,
   };
 };

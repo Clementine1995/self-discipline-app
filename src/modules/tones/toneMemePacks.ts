@@ -5,16 +5,16 @@ export const defaultMemePackId: ToneMemePackId = 'safe-lite';
 export const toneMemePacks: ToneMemePack[] = [
   {
     id: 'safe-lite',
-    name: '低刺激通用梗包',
-    description: '只放轻松、无攻击性的通用表达，适合作为后续网络梗包能力的默认占位。',
+    name: '轻刺通用梗包',
+    description: '带一点吐槽和压迫感，适合作为默认玩梗文案底座。',
     enabledByDefault: true,
     safetyLevel: 'safe',
     scenePrefixes: {
-      reward: ['这波可以。', '今天的你有点东西。', '稳了，继续保持。'],
-      punishment: ['问题不大，但别装作无事发生。', '先别急着摆，补一个最小版本。'],
-      recovery: ['先别把自己打成困难模式，', '主线任务先降级，'],
-      review: ['今日战报来了：', '复盘时间到：'],
-      plan: ['先把大饼切小块，', '别一口吃成胖子，先拆一步：'],
+      reward: ['这波可以，今天不是纯摆。', '今天的你有点东西，别浪费。', '稳住了，继续把规则焊住。'],
+      punishment: ['别装死，任务不会自己消失。', '先别急着摆，补一个最小版本。'],
+      recovery: ['别一上来就开摆，先降级：', '主线任务降级，但不准跳过：'],
+      review: ['今日战报来了，别怕看数据：', '复盘时间到，别美化自己：'],
+      plan: ['别画大饼，先切一口能咽的：', '别一口吃成胖子，先拆一步照做：'],
     },
   },
 ];

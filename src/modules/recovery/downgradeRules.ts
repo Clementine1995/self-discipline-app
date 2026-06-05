@@ -18,11 +18,11 @@ export const buildDowngradeSuggestion = (
   }
 
   const action = pickDowngradeAction(habit.name);
-  const title = totalFailures >= habit.failureThreshold ? '降级执行建议' : '轻量补救建议';
+  const title = totalFailures >= habit.failureThreshold ? '强制补救建议' : '轻量补救建议';
   const reason =
     totalFailures >= habit.failureThreshold
-      ? `失败次数已达到 ${habit.failureThreshold} 次，先保住习惯链条。`
-      : '已经出现失败记录，先降低阻力。';
+      ? `失败次数已达到 ${habit.failureThreshold} 次，别再硬扛，先把链条抢回来。`
+      : '已经出现失败记录，先降低阻力，但别允许自己跳过。';
 
   return {
     title,
@@ -35,22 +35,22 @@ const pickDowngradeAction = (habitName: string) => {
   const name = habitName.toLowerCase();
 
   if (name.includes('运动') || name.includes('健身') || name.includes('跑步') || name.includes('锻炼')) {
-    return '今天只做 3 分钟拉伸或 10 个深蹲。';
+    return '今天只做 3 分钟拉伸或 10 个深蹲，做完再谈休息。';
   }
 
   if (name.includes('书') || name.includes('阅读')) {
-    return '今天只读 2 页，或者读 5 分钟。';
+    return '今天只读 2 页，或者读 5 分钟，别让书继续躺着。';
   }
 
   if (name.includes('睡') || name.includes('早起')) {
-    return '今晚只提前 10 分钟上床，先把节奏拉回来。';
+    return '今晚提前 10 分钟上床，先把作息从失控边缘拉回来。';
   }
 
   if (name.includes('冥想') || name.includes('呼吸')) {
-    return '今天只做 1 分钟呼吸练习。';
+    return '今天只做 1 分钟呼吸练习，先让自己停下来。';
   }
 
-  return '今天只做这个任务的 2 分钟版本。';
+  return '今天只做这个任务的 2 分钟版本，完成前别把它划过去。';
 };
 
 const renderToneAction = (toneId: ToneId, action: string) => {
