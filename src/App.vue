@@ -46,8 +46,10 @@ import {
 import { barChartOutline, calendarClearOutline, chatbubblesOutline, listOutline, settingsOutline } from 'ionicons/icons';
 import { computed, onMounted } from 'vue';
 import { useAppStore } from '@/stores/appStore';
+import { useHabitStore } from '@/stores/habitStore';
 
 const appStore = useAppStore();
+const habitStore = useHabitStore();
 const todayIcon = calendarClearOutline;
 const tasksIcon = listOutline;
 const statsIcon = barChartOutline;
@@ -81,5 +83,6 @@ const themeStyle = computed(() => {
 
 onMounted(() => {
   appStore.loadSettings();
+  void habitStore.refreshScheduledReminders();
 });
 </script>

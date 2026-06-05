@@ -2,6 +2,7 @@ import { defineStore } from 'pinia';
 import type { Habit } from '@/types/habit';
 import type { HabitDraft } from '@/modules/habits/habitService';
 import { habitService } from '@/modules/habits/habitService';
+import { reconcileHabitReminders } from '@/modules/reminders/reminderService';
 
 export const useHabitStore = defineStore('habits', {
   state: () => ({
@@ -27,6 +28,14 @@ export const useHabitStore = defineStore('habits', {
       } finally {
         this.isLoading = false;
       }
+    },
+
+    async refreshScheduledReminders() {
+      if (!this.isLoaded) {
+        await this.loadHabits();
+      }
+
+      await reconcileHabitReminders(this.habits);
     },
 
     async createHabit(draft: HabitDraft) {

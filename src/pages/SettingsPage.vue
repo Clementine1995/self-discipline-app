@@ -12,6 +12,9 @@
           <div class="section-heading">
             <h2>本地通知</h2>
             <p>{{ reminderStatus.message }}</p>
+            <p class="permission-hint">
+              测试通知只验证“通知权限”；任务到点准时响，还需要 Android 的“闹钟与提醒/精确闹钟”允许定时唤醒。
+            </p>
           </div>
 
           <div v-if="reminderMessage" class="form-note">{{ reminderMessage }}</div>
@@ -26,7 +29,7 @@
               color="warning"
               @click="openExactAlarm"
             >
-              打开精确闹钟设置
+              打开闹钟与提醒设置
             </IonButton>
           </div>
         </section>

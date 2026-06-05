@@ -105,6 +105,13 @@ ion-label p {
   line-height: 1.5;
 }
 
+.permission-hint {
+  padding: 10px 12px;
+  border: 1px dashed var(--app-border);
+  border-radius: 14px;
+  background: var(--app-surface-muted);
+}
+
 .task-list,
 .plain-list,
 .form-list {
