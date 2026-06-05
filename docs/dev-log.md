@@ -25,7 +25,7 @@ This file keeps the project handoff context inside the repository so another mac
 - Reward and punishment prompts.
 - Failure downgrade suggestions.
 - Local notification permission status, test notification, and task reminder sync.
-- Theme system with `fresh-schedule`, `game-achievement`, and `dark-discipline`.
+- Theme system with `fresh-schedule`, `game-achievement`, `dark-discipline`, `schemer-control`, `tsundere-challenge`, `adult-command` (成人调教型), and `minimal-data`.
 - Tone system with structured profiles and a safe low-stimulation meme pack placeholder.
 - Local data export and reset.
 - AI daily review placeholder using local rules.
@@ -33,6 +33,7 @@ This file keeps the project handoff context inside the repository so another mac
 - AI weekly report placeholder using local rules.
 - Repeat rules: daily, weekdays, weekends, and selected weekdays.
 - Points system: check-in points, milestone bonus, level progress.
+- Reward shop v1: local reward items, point redemption, and redemption history.
 
 ## Important Notes
 

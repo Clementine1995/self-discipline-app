@@ -3,6 +3,12 @@
     <IonHeader translucent>
       <IonToolbar>
         <IonTitle>统计</IonTitle>
+        <IonButtons slot="end">
+          <IonButton router-link="/rewards">
+            <IonIcon slot="start" :icon="giftIcon" />
+            奖励
+          </IonButton>
+        </IonButtons>
       </IonToolbar>
     </IonHeader>
 
@@ -96,6 +102,9 @@ import { computed } from 'vue';
 import {
   IonContent,
   IonHeader,
+  IonButton,
+  IonButtons,
+  IonIcon,
   IonItem,
   IonLabel,
   IonList,
@@ -104,6 +113,7 @@ import {
   IonToolbar,
   onIonViewWillEnter,
 } from '@ionic/vue';
+import { giftOutline } from 'ionicons/icons';
 import { useHabitStore } from '@/stores/habitStore';
 import { useCheckinStore } from '@/stores/checkinStore';
 import { buildHabitStats, buildSevenDayTrend, calculateCompletionRate } from '@/modules/stats/statsRules';
@@ -113,6 +123,7 @@ import { toDateKey } from '@/utils/date';
 
 const habitStore = useHabitStore();
 const checkinStore = useCheckinStore();
+const giftIcon = giftOutline;
 
 onIonViewWillEnter(() => {
   habitStore.loadHabits();

@@ -25,7 +25,7 @@
         <section class="section-block">
           <div class="section-heading">
             <h2>界面主题</h2>
-            <p>第一版先接 3 个主题，后续可以继续扩展视觉人格。</p>
+            <p>主题会影响颜色、反馈方式和整体情绪氛围。</p>
           </div>
 
           <div class="option-stack">

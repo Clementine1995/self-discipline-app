@@ -169,6 +169,38 @@ const themeFeedback = computed(() => {
     };
   }
 
+  if (style === 'schemer') {
+    return {
+      mark: `${unfinishedCount.value}`,
+      title: unfinishedCount.value === 0 ? '嗯，今天没让我失望' : '还剩一点，别装看不见',
+      message: unfinishedCount.value === 0 ? '记录很漂亮，继续保持这个节奏。' : '先完成最小版本也行，但别把缺口留到明天。',
+    };
+  }
+
+  if (style === 'challenge') {
+    return {
+      mark: `${completionRate.value}%`,
+      title: completedCount.value > 0 ? '勉强算你有点行动力' : '不会今天还没开始吧',
+      message: totalCount.value === 0 ? '今天没任务，那就先放你一马。' : '先打掉一个任务，剩下的再慢慢收拾。',
+    };
+  }
+
+  if (style === 'command') {
+    return {
+      mark: `${unfinishedCount.value}`,
+      title: unfinishedCount.value === 0 ? '今日指令完成，表现合格' : '指令尚未完成',
+      message: unfinishedCount.value === 0 ? '保持记录，明天继续听话执行。' : '选择一个任务，执行最低版本，完成后再离开。',
+    };
+  }
+
+  if (style === 'data') {
+    return {
+      mark: `${completionRate.value}%`,
+      title: `完成率 ${completionRate.value}%`,
+      message: totalCount.value === 0 ? '今日计划任务数为 0。' : `已完成 ${completedCount.value} 项，未完成 ${unfinishedCount.value} 项。`,
+    };
+  }
+
   return {
     mark: `${completedCount.value}/${totalCount.value}`,
     title: completedCount.value === totalCount.value && totalCount.value > 0 ? '今天的节奏很稳' : '按自己的节奏来',

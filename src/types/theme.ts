@@ -1,8 +1,22 @@
-export type ThemeId = 'fresh-schedule' | 'game-achievement' | 'dark-discipline';
+export type ThemeId =
+  | 'fresh-schedule'
+  | 'game-achievement'
+  | 'dark-discipline'
+  | 'schemer-control'
+  | 'tsundere-challenge'
+  | 'adult-command'
+  | 'minimal-data';
 
-export type ThemeDensity = 'calm' | 'playful' | 'strict';
+export type ThemeDensity = 'calm' | 'playful' | 'strict' | 'intense' | 'minimal';
 
-export type ThemeFeedbackStyle = 'schedule' | 'achievement' | 'discipline';
+export type ThemeFeedbackStyle =
+  | 'schedule'
+  | 'achievement'
+  | 'discipline'
+  | 'schemer'
+  | 'challenge'
+  | 'command'
+  | 'data';
 
 export type ThemeConfig = {
   id: ThemeId;
