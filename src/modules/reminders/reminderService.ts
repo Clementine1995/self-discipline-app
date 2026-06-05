@@ -5,6 +5,7 @@ import { addDays, toDateKey } from '@/utils/date';
 
 const reminderChannelId = 'habit-reminders';
 const scheduledReminderSlots = 1;
+const maxJavaInt = 2_147_483_647;
 
 export type ReminderSyncResult = {
   scheduled: boolean;
@@ -307,11 +308,11 @@ const getUpcomingReminderDates = (habit: Habit) => {
 
 const getHabitNotificationIds = (habitId: string) =>
   [
-    Math.abs(hashString(habitId)),
+    toJavaIntId(hashString(habitId)),
     ...Array.from({ length: scheduledReminderSlots }, (_, slot) => getHabitNotificationId(habitId, slot)),
   ].filter((id, index, ids) => ids.indexOf(id) === index);
 
-const getHabitNotificationId = (habitId: string, slot: number) => Math.abs(hashString(`${habitId}:${slot}`));
+const getHabitNotificationId = (habitId: string, slot: number) => toJavaIntId(hashString(`${habitId}:${slot}`));
 
 const formatReminderDate = (date: Date) =>
   date.toLocaleString('zh-CN', {
@@ -335,6 +336,11 @@ const getErrorMessage = (error: unknown) => {
   } catch {
     return '未知错误';
   }
+};
+
+const toJavaIntId = (value: number) => {
+  const id = Math.abs(value) % maxJavaInt;
+  return id === 0 ? 1 : id;
 };
 
 const hashString = (value: string) =>
