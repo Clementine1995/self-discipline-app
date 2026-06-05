@@ -4,7 +4,7 @@ import { formatRepeatRule, shouldHabitRunOnDate } from '@/modules/habits/repeatR
 import { addDays, toDateKey } from '@/utils/date';
 
 const reminderChannelId = 'habit-reminders';
-const scheduledReminderSlots = 21;
+const scheduledReminderSlots = 1;
 
 export type ReminderSyncResult = {
   scheduled: boolean;
@@ -123,11 +123,11 @@ export const syncDailyReminder = async (habit: Habit): Promise<ReminderSyncResul
       permissionGranted: true,
       message: `${habit.reminderTime} 的${formatRepeatRule(habit.repeatRule)}提醒已设置；已计算 ${upcomingReminderDates.length} 条，系统确认 ${pendingCount ?? 0} 条，下一次 ${nextReminderText}${scheduledIds.length === 0 ? '；但 native schedule 没返回 id' : ''}${exactAlarm === 'denied' ? '；通知权限已开，但准点触发还需要允许“闹钟与提醒”' : ''}`,
     };
-  } catch {
+  } catch (error) {
     return {
       scheduled: false,
       permissionGranted: false,
-      message: '任务已保存，当前环境暂不支持本地通知',
+      message: `任务已保存，但本地通知排入失败：${getErrorMessage(error)}`,
     };
   }
 };
@@ -181,8 +181,7 @@ export const scheduleDailyReminder = async (habit: Habit, reminderDates = getUpc
       channelId: reminderChannelId,
       autoCancel: true,
       schedule: {
-        // Android native parses the bridge payload as an ISO string even though the TS type is Date.
-        at: at.toISOString() as unknown as Date,
+        at,
         allowWhileIdle: true,
       },
     })),
@@ -225,11 +224,11 @@ export const sendTestReminder = async (): Promise<ReminderSyncResult> => {
       permissionGranted: true,
       message: '测试提醒已发送',
     };
-  } catch {
+  } catch (error) {
     return {
       scheduled: false,
       permissionGranted: false,
-      message: '当前环境暂不支持本地通知',
+      message: `测试通知发送失败：${getErrorMessage(error)}`,
     };
   }
 };
@@ -321,6 +320,22 @@ const formatReminderDate = (date: Date) =>
     hour: '2-digit',
     minute: '2-digit',
   });
+
+const getErrorMessage = (error: unknown) => {
+  if (error instanceof Error && error.message) {
+    return error.message;
+  }
+
+  if (typeof error === 'string') {
+    return error;
+  }
+
+  try {
+    return JSON.stringify(error);
+  } catch {
+    return '未知错误';
+  }
+};
 
 const hashString = (value: string) =>
   value.split('').reduce((hash, char) => (hash << 5) - hash + char.charCodeAt(0), 0);
