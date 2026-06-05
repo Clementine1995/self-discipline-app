@@ -71,7 +71,7 @@
       :is-open="rewardAlert.isOpen"
       header="奖励已解锁"
       :message="rewardAlert.message"
-      confirm-button-text="知道了"
+      :buttons="rewardAlertButtons"
       @didDismiss="rewardAlert.isOpen = false"
     />
 
@@ -123,6 +123,7 @@ const rewardAlert = reactive({
   isOpen: false,
   message: '',
 });
+const rewardAlertButtons = ['知道了'];
 
 onIonViewWillEnter(() => {
   appStore.loadSettings();

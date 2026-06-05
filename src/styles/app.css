@@ -277,10 +277,16 @@ ion-button {
 }
 
 .reward-shop-card p,
+.reward-shop-note,
 .reward-history-row span {
   margin: 0;
   color: var(--app-text-muted);
   line-height: 1.5;
+}
+
+.reward-shop-note {
+  display: block;
+  font-size: 13px;
 }
 
 .reward-history-row {

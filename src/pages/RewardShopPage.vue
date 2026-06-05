@@ -33,6 +33,9 @@
                 <span>{{ item.cost }} 分</span>
               </div>
               <p>{{ item.description }}</p>
+              <small v-if="shopState.availablePoints < item.cost" class="reward-shop-note">
+                还差 {{ item.cost - shopState.availablePoints }} 分
+              </small>
               <IonButton
                 expand="block"
                 size="small"
@@ -72,12 +75,21 @@
       position="top"
       @didDismiss="toast.isOpen = false"
     />
+
+    <IonAlert
+      :is-open="confirmState.isOpen"
+      header="确认兑换"
+      :message="confirmMessage"
+      :buttons="confirmButtons"
+      @didDismiss="confirmState.isOpen = false"
+    />
   </IonPage>
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref } from 'vue';
+import { computed, reactive, ref } from 'vue';
 import {
+  IonAlert,
   IonBackButton,
   IonButton,
   IonButtons,
@@ -102,16 +114,19 @@ const toast = reactive({
   isOpen: false,
   message: '',
 });
+const confirmState = reactive<{
+  isOpen: boolean;
+  item?: RewardShopItem;
+}>({
+  isOpen: false,
+  item: undefined,
+});
 const shopState = ref<RewardShopState>({
   totalPoints: 0,
   spentPoints: 0,
   availablePoints: 0,
   items: [],
   redemptions: [],
-});
-
-onMounted(() => {
-  refreshShopState();
 });
 
 onIonViewWillEnter(async () => {
@@ -121,14 +136,39 @@ onIonViewWillEnter(async () => {
 });
 
 const availableRate = computed(() => calculateCompletionRate(shopState.value.availablePoints, shopState.value.totalPoints));
+const confirmMessage = computed(() =>
+  confirmState.item ? `将消耗 ${confirmState.item.cost} 分兑换「${confirmState.item.title}」。` : '',
+);
+const confirmButtons = computed(() => [
+  {
+    text: '再想想',
+    role: 'cancel',
+  },
+  {
+    text: '兑换',
+    role: 'confirm',
+    handler: confirmRedeem,
+  },
+]);
 
-const redeem = async (item: RewardShopItem) => {
+const redeem = (item: RewardShopItem) => {
+  confirmState.item = item;
+  confirmState.isOpen = true;
+};
+
+const confirmRedeem = async () => {
+  if (!confirmState.item) {
+    return;
+  }
+
   isSaving.value = true;
   try {
-    const result = await redeemReward(item, habitStore.habits, checkinStore.checkIns);
+    const result = await redeemReward(confirmState.item, habitStore.habits, checkinStore.checkIns);
     showToast(result.message);
     await refreshShopState();
   } finally {
+    confirmState.isOpen = false;
+    confirmState.item = undefined;
     isSaving.value = false;
   }
 };

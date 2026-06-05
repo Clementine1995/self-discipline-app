@@ -25,7 +25,7 @@
           </div>
           <div class="metric-tile">
             <span>本周完成率</span>
-            <strong>{{ completionRate }}%</strong>
+            <strong>{{ weeklyCompletionRate }}%</strong>
           </div>
           <div class="metric-tile">
             <span>总失败次数</span>
@@ -151,6 +151,11 @@ const totalFailures = computed(() =>
   habitProgressList.value.reduce((total, progress) => total + progress.totalFailures, 0),
 );
 const sevenDayTrend = computed(() => buildSevenDayTrend(habitStore.habits, checkinStore.checkIns));
+const weeklyCompletionRate = computed(() => {
+  const completed = sevenDayTrend.value.reduce((total, day) => total + day.completed, 0);
+  const total = sevenDayTrend.value.reduce((sum, day) => sum + day.total, 0);
+  return calculateCompletionRate(completed, total);
+});
 const pointSummary = computed(() => buildPointSummary(habitStore.habits, checkinStore.checkIns, todayKey.value));
 const levelProgress = computed(() => {
   const previousLevelPoints = (pointSummary.value.level - 1) * 100;
