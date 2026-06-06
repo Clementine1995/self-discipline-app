@@ -646,6 +646,45 @@ ion-button {
   padding: 0 16px 16px;
 }
 
+.diagnostic-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  padding: 0 16px 14px;
+}
+
+.diagnostic-item {
+  display: grid;
+  gap: 6px;
+  border: 1px solid var(--app-border);
+  border-radius: 16px;
+  padding: 12px;
+  background: var(--app-surface-muted);
+}
+
+.diagnostic-item span {
+  color: var(--app-text-muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.diagnostic-item strong {
+  color: var(--ion-text-color);
+  font-size: 16px;
+}
+
+.background-checklist {
+  display: grid;
+  gap: 8px;
+  padding: 0 16px 16px;
+}
+
+.background-checklist p {
+  margin: 0;
+  color: var(--app-text-muted);
+  line-height: 1.55;
+}
+
 .swatch {
   width: 28px;
   height: 28px;

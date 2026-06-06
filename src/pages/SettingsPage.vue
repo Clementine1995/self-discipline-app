@@ -22,6 +22,7 @@
           <div class="action-row">
             <IonButton expand="block" @click="sendReminderTest">发送测试通知</IonButton>
             <IonButton expand="block" fill="outline" @click="refreshReminderStatus">刷新权限状态</IonButton>
+            <IonButton expand="block" fill="outline" @click="rescheduleReminders">重排任务提醒</IonButton>
             <IonButton
               v-if="reminderStatus.exactAlarm === 'denied'"
               expand="block"
@@ -31,6 +32,36 @@
             >
               打开闹钟与提醒设置
             </IonButton>
+          </div>
+        </section>
+
+        <section class="section-block">
+          <div class="section-heading">
+            <h2>后台提醒排查</h2>
+            <p>正常退到后台或划掉最近任务后，已排入的提醒应该还能响；但“强行停止”或手机厂商省电策略可能会直接拦掉闹钟。</p>
+          </div>
+
+          <div class="diagnostic-grid">
+            <div class="diagnostic-item">
+              <span>通知权限</span>
+              <strong>{{ reminderStatus.display === 'granted' ? '已开启' : '未开启' }}</strong>
+            </div>
+            <div class="diagnostic-item">
+              <span>闹钟与提醒</span>
+              <strong>{{ reminderStatus.exactAlarm === 'denied' ? '未允许' : '可用' }}</strong>
+            </div>
+            <div class="diagnostic-item">
+              <span>已排入提醒</span>
+              <strong>{{ reminderStatus.pendingCount ?? 0 }} 条</strong>
+            </div>
+          </div>
+
+          <div class="background-checklist">
+            <p>如果后台关闭后不响，优先检查这些系统项：</p>
+            <p>1. 不要在系统设置里“强行停止”App；强停后 Android 会禁止闹钟，直到你重新打开 App。</p>
+            <p>2. 在电池设置里把本 App 改成“不受限制”或“允许后台运行”。</p>
+            <p>3. 如果手机有“自启动/后台弹出/关联启动”管理，把本 App 放行。</p>
+            <p>4. 打开 App 后点“重排任务提醒”，确认“已排入提醒”不是 0。</p>
           </div>
         </section>
 
@@ -229,6 +260,12 @@ const sendReminderTest = async () => {
 const openExactAlarm = async () => {
   const result = await openExactAlarmSettings();
   reminderMessage.value = result.message;
+  await refreshReminderStatus();
+};
+
+const rescheduleReminders = async () => {
+  await habitStore.refreshScheduledReminders();
+  reminderMessage.value = '已重新排入所有启用提醒的任务；如果后台仍不响，请检查电池和自启动限制。';
   await refreshReminderStatus();
 };
 

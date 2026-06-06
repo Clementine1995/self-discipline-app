@@ -4,7 +4,7 @@ import { formatRepeatRule, shouldHabitRunOnDate } from '@/modules/habits/repeatR
 import { addDays, toDateKey } from '@/utils/date';
 
 const reminderChannelId = 'habit-reminders';
-const scheduledReminderSlots = 1;
+const scheduledReminderSlots = 14;
 const maxJavaInt = 2_147_483_647;
 
 export type ReminderSyncResult = {
