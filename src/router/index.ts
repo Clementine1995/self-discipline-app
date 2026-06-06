@@ -12,6 +12,11 @@ const routes: RouteRecordRaw[] = [
     component: () => import('@/pages/TodayPage.vue'),
   },
   {
+    path: '/reminders/:habitId',
+    name: 'reminder-action',
+    component: () => import('@/pages/ReminderActionPage.vue'),
+  },
+  {
     path: '/tasks',
     name: 'tasks',
     component: () => import('@/pages/TasksPage.vue'),

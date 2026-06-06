@@ -12,48 +12,50 @@
     <IonContent fullscreen>
       <main class="page-stack with-top-space">
         <section class="section-block">
-          <IonList lines="full" class="form-list">
-            <IonItem>
-              <IonInput v-model="draft.name" label="名称" label-placement="stacked" placeholder="例如：看书" />
-            </IonItem>
-            <IonItem>
-              <IonInput v-model="draft.reminderTime" label="提醒时间" label-placement="stacked" type="time" />
-            </IonItem>
-            <IonItem>
-              <IonToggle v-model="draft.reminderEnabled" justify="space-between">启用提醒</IonToggle>
-            </IonItem>
-            <IonItem>
-              <IonLabel>
-                <h3>重复规则</h3>
-                <p>{{ repeatRuleLabel }}</p>
-              </IonLabel>
-            </IonItem>
-            <IonItem>
-              <IonInput
+          <VanForm class="van-form-panel">
+            <VanCellGroup inset>
+              <VanField v-model="draft.name" label="名称" placeholder="例如：看书" clearable />
+              <VanField
+                :model-value="draft.reminderTime"
+                label="提醒时间"
+                readonly
+                is-link
+                placeholder="选择提醒时间"
+                @click="openTimePicker"
+              />
+              <VanField label="启用提醒">
+                <template #input>
+                  <VanSwitch v-model="draft.reminderEnabled" size="22px" />
+                </template>
+              </VanField>
+              <VanField label="重复规则" :model-value="repeatRuleLabel" readonly />
+              <VanField
                 v-model.number="draft.failureThreshold"
                 label="失败阈值"
-                label-placement="stacked"
-                min="1"
+                :min="1"
                 type="number"
+                placeholder="至少 1 次"
               />
-            </IonItem>
-            <IonItem>
-              <IonTextarea
+              <VanField
                 v-model="draft.rewardText"
                 label="奖励说明"
-                label-placement="stacked"
+                type="textarea"
+                autosize
+                :maxlength="120"
+                show-word-limit
                 placeholder="连续完成后的奖励提示"
               />
-            </IonItem>
-            <IonItem>
-              <IonTextarea
+              <VanField
                 v-model="draft.punishmentText"
                 label="惩罚说明"
-                label-placement="stacked"
+                type="textarea"
+                autosize
+                :maxlength="120"
+                show-word-limit
                 placeholder="失败达到阈值后的惩罚提示"
               />
-            </IonItem>
-          </IonList>
+            </VanCellGroup>
+          </VanForm>
 
           <div class="option-stack form-option-stack">
             <button
@@ -87,24 +89,35 @@
           <div v-if="errorMessage" class="form-error">{{ errorMessage }}</div>
           <div v-if="reminderMessage" class="form-note">{{ reminderMessage }}</div>
 
-          <IonButton expand="block" class="primary-action" :disabled="isSaving" @click="saveHabit">
+          <VanButton block type="primary" class="primary-action" :disabled="isSaving" @click="saveHabit">
             {{ isSaving ? '保存中...' : '保存任务' }}
-          </IonButton>
+          </VanButton>
 
-          <IonButton
+          <VanButton
             v-if="isEditing"
-            expand="block"
-            fill="clear"
-            color="danger"
+            block
+            plain
+            type="danger"
             class="secondary-action"
             :disabled="isSaving"
             @click="showDeleteConfirm = true"
           >
             删除任务
-          </IonButton>
+          </VanButton>
         </section>
       </main>
     </IonContent>
+
+    <VanPopup v-model:show="showTimePicker" round position="bottom">
+      <VanTimePicker
+        v-model="timePickerValue"
+        title="选择提醒时间"
+        confirm-button-text="完成"
+        cancel-button-text="取消"
+        @confirm="confirmReminderTime"
+        @cancel="showTimePicker = false"
+      />
+    </VanPopup>
 
     <IonAlert
       :is-open="showDeleteConfirm"
@@ -120,21 +133,15 @@
 import {
   IonAlert,
   IonBackButton,
-  IonButton,
   IonButtons,
   IonContent,
   IonHeader,
-  IonInput,
-  IonItem,
-  IonLabel,
-  IonList,
   IonPage,
-  IonTextarea,
   IonTitle,
-  IonToggle,
   IonToolbar,
   onIonViewWillEnter,
 } from '@ionic/vue';
+import { Button as VanButton, CellGroup as VanCellGroup, Field as VanField, Form as VanForm, Popup as VanPopup, Switch as VanSwitch, TimePicker as VanTimePicker } from 'vant';
 import { computed, reactive, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { createEmptyHabitDraft, toHabitDraft, validateHabitDraft } from '@/modules/habits/habitService';
@@ -152,6 +159,8 @@ const errorMessage = ref('');
 const reminderMessage = ref('');
 const isSaving = ref(false);
 const showDeleteConfirm = ref(false);
+const showTimePicker = ref(false);
+const timePickerValue = ref(['08', '00']);
 const deleteAlertButtons = [
   {
     text: '取消',
@@ -213,6 +222,16 @@ const saveHabit = async () => {
 };
 
 const repeatRuleLabel = computed(() => formatRepeatRule(draft.repeatRule));
+
+const openTimePicker = () => {
+  timePickerValue.value = draft.reminderTime.split(':');
+  showTimePicker.value = true;
+};
+
+const confirmReminderTime = ({ selectedValues }: { selectedValues: string[] }) => {
+  draft.reminderTime = selectedValues.join(':');
+  showTimePicker.value = false;
+};
 
 const setRepeatRule = (type: RepeatRule['type']) => {
   if (type === 'weekly') {

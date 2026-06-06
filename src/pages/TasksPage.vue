@@ -17,15 +17,34 @@
 
     <IonContent fullscreen>
       <main class="page-stack with-top-space">
-        <section class="section-block">
+        <section class="hero-panel task-library-hero">
+          <div class="task-library-header">
+            <div>
+              <p class="eyebrow">任务库</p>
+              <h1>{{ libraryTitle }}</h1>
+            </div>
+            <IonButton size="small" fill="outline" router-link="/tasks/ai-plan">
+              <IonIcon slot="start" :icon="sparklesIcon" />
+              AI
+            </IonButton>
+          </div>
+          <p>{{ libraryMessage }}</p>
+          <div class="task-library-metrics">
+            <div>
+              <span>总任务</span>
+              <strong>{{ totalHabitCount }}</strong>
+            </div>
+            <div>
+              <span>提醒开启</span>
+              <strong>{{ reminderEnabledCount }}</strong>
+            </div>
+          </div>
+        </section>
+
+        <section class="section-block task-library-section">
           <div class="section-heading">
             <h2>自律任务</h2>
-            <p>本地保存，后续可替换为 Preferences、SQLite 或后端同步。</p>
-          </div>
-
-          <div v-if="habitStore.reminderMessage" class="reminder-diagnostic">
-            <strong>提醒排查结果</strong>
-            <p>{{ habitStore.reminderMessage }}</p>
+            <p>管理提醒、重复规则和奖惩文案。任务越清楚，执行时越少扯皮。</p>
           </div>
 
           <div v-if="habitStore.isLoading" class="empty-state">正在读取任务...</div>
@@ -38,11 +57,24 @@
             </IonButton>
           </div>
 
-          <IonList v-else lines="full" class="plain-list">
-            <IonItem v-for="habit in habitStore.habits" :key="habit.id" :router-link="`/tasks/${habit.id}`">
+          <IonList v-else lines="none" class="plain-list task-library-list">
+            <IonItem
+              v-for="habit in habitStore.habits"
+              :key="habit.id"
+              class="task-library-item"
+              :class="{ quiet: !habit.reminderEnabled }"
+              :router-link="`/tasks/${habit.id}`"
+            >
               <IonLabel>
-                <h3>{{ habit.name }}</h3>
+                <div class="task-title-row">
+                  <h3>{{ habit.name }}</h3>
+                  <span v-if="!habit.reminderEnabled" class="task-state-pill">无提醒</span>
+                </div>
                 <p>{{ habit.reminderEnabled ? `${habit.reminderTime} 提醒` : '提醒已关闭' }} · {{ formatRepeatRule(habit.repeatRule) }}</p>
+                <div class="task-library-meta">
+                  <span>连续 {{ getHabitStats(habit.id)?.currentStreak ?? 0 }} 天</span>
+                  <span>失败 {{ getHabitStats(habit.id)?.totalFailures ?? 0 }} 次</span>
+                </div>
               </IonLabel>
             </IonItem>
           </IonList>
@@ -77,14 +109,17 @@ import {
   onIonViewWillEnter,
 } from '@ionic/vue';
 import { addOutline, sparklesOutline } from 'ionicons/icons';
-import { reactive } from 'vue';
+import { computed, reactive } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { formatRepeatRule } from '@/modules/habits/repeatRules';
+import { buildHabitStats } from '@/modules/stats/statsRules';
 import { useHabitStore } from '@/stores/habitStore';
+import { useCheckinStore } from '@/stores/checkinStore';
 
 const route = useRoute();
 const router = useRouter();
 const habitStore = useHabitStore();
+const checkinStore = useCheckinStore();
 const addIcon = addOutline;
 const sparklesIcon = sparklesOutline;
 const toast = reactive({
@@ -94,11 +129,38 @@ const toast = reactive({
 
 onIonViewWillEnter(async () => {
   await habitStore.loadHabits();
+  await checkinStore.loadCheckIns();
 
   if (route.query.reminder === '1' && habitStore.reminderMessage) {
-    toast.message = habitStore.reminderMessage;
+    toast.message = '任务已保存，提醒设置已同步';
     toast.isOpen = true;
     await router.replace({ path: '/tasks' });
   }
 });
+
+const totalHabitCount = computed(() => habitStore.habits.length);
+const reminderEnabledCount = computed(() => habitStore.habits.filter((habit) => habit.reminderEnabled).length);
+const libraryTitle = computed(() => {
+  if (totalHabitCount.value === 0) {
+    return '先放进一个规则';
+  }
+
+  return `${totalHabitCount.value} 个任务规则`;
+});
+const libraryMessage = computed(() => {
+  if (totalHabitCount.value === 0) {
+    return '别先追求完美计划，先把一个会真的执行的动作写下来。';
+  }
+
+  if (reminderEnabledCount.value === 0) {
+    return '所有任务都没有开启提醒，执行全靠自觉，风险偏高。';
+  }
+
+  return `已管理 ${totalHabitCount.value} 个任务，其中 ${reminderEnabledCount.value} 个会主动提醒你。`;
+});
+const habitStatsMap = computed(() =>
+  new Map(habitStore.habits.map((habit) => [habit.id, buildHabitStats(habit, checkinStore.checkIns)])),
+);
+
+const getHabitStats = (habitId: string) => habitStatsMap.value.get(habitId);
 </script>

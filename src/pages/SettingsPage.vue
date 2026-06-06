@@ -19,6 +19,34 @@
 
           <div v-if="reminderMessage" class="form-note">{{ reminderMessage }}</div>
 
+          <div class="option-stack compact-options">
+            <button
+              v-for="option in reminderIntensityOptions"
+              :key="option.value"
+              class="option-row option-row-single"
+              :class="{ selected: appStore.reminderIntensity === option.value }"
+              type="button"
+              @click="setReminderIntensity(option.value)"
+            >
+              <span>
+                <strong>{{ option.label }}</strong>
+                <small>{{ option.description }}</small>
+              </span>
+            </button>
+          </div>
+
+          <div class="segmented-grid">
+            <button
+              v-for="option in reminderScheduleCountOptions"
+              :key="option.value"
+              :class="{ selected: appStore.reminderScheduleCount === option.value }"
+              type="button"
+              @click="setReminderScheduleCount(option.value)"
+            >
+              {{ option.label }}
+            </button>
+          </div>
+
           <div class="action-row">
             <IonButton expand="block" @click="sendReminderTest">发送测试通知</IonButton>
             <IonButton expand="block" fill="outline" @click="refreshReminderStatus">刷新权限状态</IonButton>
@@ -37,38 +65,46 @@
 
         <section class="section-block">
           <div class="section-heading">
-            <h2>后台提醒排查</h2>
-            <p>正常退到后台或划掉最近任务后，已排入的提醒应该还能响；但“强行停止”或手机厂商省电策略可能会直接拦掉闹钟。</p>
+            <h2>后台提醒</h2>
+            <p>后台提醒已收进排查面板，日常使用时不用一直盯着这些技术状态。</p>
           </div>
 
-          <div class="diagnostic-grid">
-            <div class="diagnostic-item">
-              <span>通知权限</span>
-              <strong>{{ reminderStatus.display === 'granted' ? '已开启' : '未开启' }}</strong>
-            </div>
-            <div class="diagnostic-item">
-              <span>闹钟与提醒</span>
-              <strong>{{ reminderStatus.exactAlarm === 'denied' ? '未允许' : '可用' }}</strong>
-            </div>
-            <div class="diagnostic-item">
-              <span>已排入提醒</span>
-              <strong>{{ reminderStatus.pendingCount ?? 0 }} 条</strong>
-            </div>
+          <div class="action-row compact-action-row">
+            <IonButton expand="block" fill="outline" @click="showReminderDiagnostics = !showReminderDiagnostics">
+              {{ showReminderDiagnostics ? '收起排查信息' : '查看排查信息' }}
+            </IonButton>
           </div>
 
-          <div class="background-checklist">
-            <p>如果后台关闭后不响，优先检查这些系统项：</p>
-            <p>1. 不要在系统设置里“强行停止”App；强停后 Android 会禁止闹钟，直到你重新打开 App。</p>
-            <p>2. 在电池设置里把本 App 改成“不受限制”或“允许后台运行”。</p>
-            <p>3. 如果手机有“自启动/后台弹出/关联启动”管理，把本 App 放行。</p>
-            <p>4. 打开 App 后点“重排任务提醒”，确认“已排入提醒”不是 0。</p>
-          </div>
+          <template v-if="showReminderDiagnostics">
+            <div class="diagnostic-grid">
+              <div class="diagnostic-item">
+                <span>通知权限</span>
+                <strong>{{ reminderStatus.display === 'granted' ? '已开启' : '未开启' }}</strong>
+              </div>
+              <div class="diagnostic-item">
+                <span>闹钟与提醒</span>
+                <strong>{{ reminderStatus.exactAlarm === 'denied' ? '未允许' : '可用' }}</strong>
+              </div>
+              <div class="diagnostic-item">
+                <span>已排入提醒</span>
+                <strong>{{ reminderStatus.pendingCount ?? 0 }} 条</strong>
+              </div>
+            </div>
+
+            <div class="background-checklist">
+              <p>如果后台关闭后不响，优先检查这些系统项：</p>
+              <p>1. 不要在系统设置里“强行停止”App；强停后 Android 会禁止闹钟，直到你重新打开 App。</p>
+              <p>2. 在电池设置里把本 App 改成“不受限制”或“允许后台运行”。</p>
+              <p>3. 如果手机有“自启动/后台弹出/关联启动”管理，把本 App 放行。</p>
+              <p>4. 打开 App 后点“重排任务提醒”，确认“已排入提醒”不是 0。</p>
+            </div>
+          </template>
         </section>
 
         <section class="section-block">
           <div class="section-heading">
             <h2>界面主题</h2>
-            <p>主题会同步推荐语气，保持界面氛围和文案人格一致。</p>
+            <p>主题只控制界面外观；文案语气单独保留，切换主题不会改掉你选好的说话风格。</p>
           </div>
 
           <div class="option-stack">
@@ -85,7 +121,7 @@
                 <strong>{{ theme.name }}</strong>
                 <small>{{ theme.description }}</small>
                 <small class="tone-meta">
-                  {{ theme.tagline }} · 推荐语气：{{ getToneName(theme.recommendedToneId) }}
+                  {{ theme.tagline }} · 适合搭配：{{ getToneName(theme.recommendedToneId) }}
                 </small>
                 <span class="theme-preview-strip">
                   <i :style="{ backgroundColor: theme.accentColor }"></i>
@@ -171,6 +207,7 @@
 
           <div class="action-row">
             <IonButton expand="block" @click="exportData">复制导出 JSON</IonButton>
+            <IonButton expand="block" fill="outline" @click="importData">从剪贴板导入 JSON</IonButton>
             <IonButton expand="block" fill="outline" color="danger" @click="resetData">清空任务和打卡</IonButton>
           </div>
         </section>
@@ -187,10 +224,11 @@ import { toneProfiles } from '@/modules/tones/toneProfiles';
 import { toneMemePacks } from '@/modules/tones/toneMemePacks';
 import { renderTonePrompt } from '@/modules/tones/toneCopy';
 import { getReminderPermissionStatus, openExactAlarmSettings, sendTestReminder } from '@/modules/reminders/reminderService';
-import { clearLocalData, exportLocalDataAsJson } from '@/modules/data/dataBackupService';
+import { clearLocalData, exportLocalDataAsJson, importLocalDataFromJson } from '@/modules/data/dataBackupService';
 import { useAppStore } from '@/stores/appStore';
 import { useCheckinStore } from '@/stores/checkinStore';
 import { useHabitStore } from '@/stores/habitStore';
+import type { ReminderIntensity, ReminderScheduleCount } from '@/modules/settings/settingsRepository';
 import type { ToneCategory, ToneId, ToneIntensity, ToneMemePack, ToneMemePackSafetyLevel } from '@/types/tone';
 
 const appStore = useAppStore();
@@ -198,6 +236,7 @@ const habitStore = useHabitStore();
 const checkinStore = useCheckinStore();
 const reminderMessage = ref('');
 const dataMessage = ref('');
+const showReminderDiagnostics = ref(false);
 const reminderStatus = reactive({
   supported: false,
   display: 'unknown',
@@ -223,6 +262,15 @@ const safetyLevelLabelMap: Record<ToneMemePackSafetyLevel, string> = {
   edgy: '刺激',
   restricted: '受限',
 };
+const reminderIntensityOptions: { value: ReminderIntensity; label: string; description: string }[] = [
+  { value: 'strong', label: '强提醒', description: '更明显的标题、展开正文、锁屏可见和高重要性渠道。' },
+  { value: 'normal', label: '普通提醒', description: '保留提醒，但文案和打扰程度更克制。' },
+];
+const reminderScheduleCountOptions: { value: ReminderScheduleCount; label: string }[] = [
+  { value: 7, label: '预排 7 次' },
+  { value: 14, label: '预排 14 次' },
+  { value: 30, label: '预排 30 次' },
+];
 
 onIonViewWillEnter(() => {
   appStore.loadSettings();
@@ -269,6 +317,20 @@ const rescheduleReminders = async () => {
   await refreshReminderStatus();
 };
 
+const setReminderIntensity = async (value: ReminderIntensity) => {
+  await appStore.setReminderIntensity(value);
+  await habitStore.refreshScheduledReminders();
+  reminderMessage.value = `提醒强度已切换为${value === 'strong' ? '强提醒' : '普通提醒'}，并已重排任务提醒`;
+  await refreshReminderStatus();
+};
+
+const setReminderScheduleCount = async (value: ReminderScheduleCount) => {
+  await appStore.setReminderScheduleCount(value);
+  await habitStore.refreshScheduledReminders();
+  reminderMessage.value = `未来提醒已改为预排 ${value} 次，并已重排任务提醒`;
+  await refreshReminderStatus();
+};
+
 const exportData = async () => {
   const json = await exportLocalDataAsJson();
 
@@ -277,6 +339,21 @@ const exportData = async () => {
     dataMessage.value = '数据 JSON 已复制到剪贴板';
   } catch {
     dataMessage.value = json;
+  }
+};
+
+const importData = async () => {
+  try {
+    const json = await navigator.clipboard.readText();
+    const backup = await importLocalDataFromJson(json);
+    appStore.isLoaded = false;
+    await appStore.loadSettings();
+    await habitStore.loadHabits();
+    await checkinStore.loadCheckIns();
+    await habitStore.refreshScheduledReminders();
+    dataMessage.value = `已导入 ${backup.habits.length} 个任务和 ${backup.checkIns.length} 条打卡记录`;
+  } catch (error) {
+    dataMessage.value = error instanceof Error ? `导入失败：${error.message}` : '导入失败，请确认剪贴板里是备份 JSON';
   }
 };
 

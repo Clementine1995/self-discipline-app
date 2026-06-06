@@ -14,16 +14,47 @@
       </IonHeader>
 
       <main class="page-stack">
-        <section class="hero-panel">
-          <p class="eyebrow">{{ todayLabel }}</p>
-          <h1>把今天这一格填上</h1>
-          <p>今日完成 {{ completedCount }} / {{ totalCount }}。只展示今天需要执行的任务。</p>
+        <section class="hero-panel today-command-panel" :class="todayRiskLevel">
+          <div class="today-command-header">
+            <div>
+              <p class="eyebrow">{{ todayLabel }}</p>
+              <h1>{{ commandTitle }}</h1>
+            </div>
+            <div class="command-score">
+              <span>完成率</span>
+              <strong>{{ completionRate }}%</strong>
+            </div>
+          </div>
+          <p>{{ commandMessage }}</p>
           <div class="progress-track" aria-hidden="true">
             <div class="progress-fill" :style="{ width: `${completionRate}%` }"></div>
           </div>
+          <div class="command-metrics">
+            <div>
+              <span>待处理</span>
+              <strong>{{ unfinishedCount }}</strong>
+            </div>
+            <div>
+              <span>已提醒</span>
+              <strong>{{ activeReminderCount }}</strong>
+            </div>
+            <div>
+              <span>已推迟</span>
+              <strong>{{ snoozedReminderCount }}</strong>
+            </div>
+          </div>
         </section>
 
-        <section class="theme-feedback" :class="appStore.currentTheme.feedbackStyle">
+        <section v-if="priorityHabit" class="priority-strip" :class="todayRiskLevel">
+          <div>
+            <span>{{ priorityLabel }}</span>
+            <strong>{{ priorityHabit.name }}</strong>
+            <p>{{ priorityMessage }}</p>
+          </div>
+          <IonButton size="small" @click="openReminderAction(priorityHabit.id)">处理</IonButton>
+        </section>
+
+        <section class="theme-feedback compact-feedback" :class="appStore.currentTheme.feedbackStyle">
           <div>
             <span>{{ appStore.currentTheme.name }}</span>
             <strong>{{ themeFeedback.title }}</strong>
@@ -48,21 +79,37 @@
             今天没有需要执行的任务，可以休息一下。
           </div>
 
-          <IonList v-else lines="none" class="task-list">
-            <IonItem v-for="habit in todayHabits" :key="habit.id" class="task-item">
+          <IonList v-else lines="none" class="task-list execution-list">
+            <IonItem v-for="habit in todayHabits" :key="habit.id" class="task-item execution-item" :class="getTaskStateClass(habit.id)">
               <IonLabel>
-                <h3>{{ habit.name }}</h3>
+                <div class="task-title-row">
+                  <h3>{{ habit.name }}</h3>
+                  <span v-if="!checkinStore.isHabitCheckedToday(habit.id)" class="task-state-pill">
+                    {{ getTaskStateLabel(habit.id) }}
+                  </span>
+                </div>
                 <p>{{ habit.reminderTime }} 提醒 · {{ formatRepeatRule(habit.repeatRule) }}</p>
+                <p v-if="getReminderStatusText(habit.id)" class="habit-prompt urgent">{{ getReminderStatusText(habit.id) }}</p>
                 <p v-if="getHabitPrompt(habit.id)" class="habit-prompt">{{ getHabitPrompt(habit.id) }}</p>
                 <p v-if="getDowngradePrompt(habit.id)" class="habit-prompt muted">{{ getDowngradePrompt(habit.id) }}</p>
               </IonLabel>
-              <IonButton
-                :fill="checkinStore.isHabitCheckedToday(habit.id) ? 'solid' : 'outline'"
-                size="small"
-                @click="toggleCheckIn(habit.id)"
-              >
-                {{ checkinStore.isHabitCheckedToday(habit.id) ? '已完成' : '打卡' }}
-              </IonButton>
+              <div class="task-actions">
+                <IonButton
+                  :fill="checkinStore.isHabitCheckedToday(habit.id) ? 'solid' : 'outline'"
+                  size="small"
+                  @click="toggleCheckIn(habit.id)"
+                >
+                  {{ checkinStore.isHabitCheckedToday(habit.id) ? '已完成' : '打卡' }}
+                </IonButton>
+                <IonButton
+                  v-if="getReminderStatusText(habit.id)"
+                  fill="clear"
+                  size="small"
+                  @click="openReminderAction(habit.id)"
+                >
+                  处理
+                </IonButton>
+              </div>
             </IonItem>
           </IonList>
         </section>
@@ -102,7 +149,9 @@ import {
   IonToolbar,
   onIonViewWillEnter,
 } from '@ionic/vue';
-import { computed, reactive } from 'vue';
+import { computed, onUnmounted, reactive, ref } from 'vue';
+import { useRouter } from 'vue-router';
+import type { ReminderAction } from '@/types/reminderAction';
 import { useHabitStore } from '@/stores/habitStore';
 import { useCheckinStore } from '@/stores/checkinStore';
 import { buildHabitStats, calculateCompletionRate } from '@/modules/stats/statsRules';
@@ -112,11 +161,17 @@ import { renderTonePrompt } from '@/modules/tones/toneCopy';
 import { useAppStore } from '@/stores/appStore';
 import { buildDowngradeSuggestion } from '@/modules/recovery/downgradeRules';
 import { formatRepeatRule, shouldHabitRunOnDate } from '@/modules/habits/repeatRules';
+import { buildReminderActionSummary, reminderActionService } from '@/modules/reminderActions/reminderActionService';
+import { cancelFollowupReminder } from '@/modules/reminders/reminderService';
 import { toDateKey } from '@/utils/date';
 
 const habitStore = useHabitStore();
 const checkinStore = useCheckinStore();
 const appStore = useAppStore();
+const router = useRouter();
+const reminderActions = ref<ReminderAction[]>([]);
+const now = ref(new Date());
+let timer: ReturnType<typeof window.setInterval> | undefined;
 const toast = reactive({
   isOpen: false,
   message: '',
@@ -127,10 +182,21 @@ const rewardAlert = reactive({
 });
 const rewardAlertButtons = ['知道了'];
 
-onIonViewWillEnter(() => {
+onIonViewWillEnter(async () => {
   appStore.loadSettings();
-  habitStore.loadHabits();
-  checkinStore.loadCheckIns();
+  await habitStore.loadHabits();
+  await checkinStore.loadCheckIns();
+  await refreshReminderActions();
+
+  window.clearInterval(timer);
+  timer = window.setInterval(() => {
+    now.value = new Date();
+    void refreshReminderActions();
+  }, 30000);
+});
+
+onUnmounted(() => {
+  window.clearInterval(timer);
 });
 
 const todayLabel = computed(() =>
@@ -153,6 +219,119 @@ const completedCount = computed(
 );
 const unfinishedCount = computed(() => Math.max(0, totalCount.value - completedCount.value));
 const completionRate = computed(() => calculateCompletionRate(completedCount.value, totalCount.value));
+const activeReminderActions = computed(() =>
+  reminderActions.value.filter(
+    (action) =>
+      action.date === todayKey.value &&
+      action.status !== 'completed' &&
+      !checkinStore.checkIns.some((checkIn) => checkIn.habitId === action.habitId && checkIn.date === todayKey.value),
+  ),
+);
+const activeReminderCount = computed(() => activeReminderActions.value.length);
+const snoozedReminderCount = computed(
+  () => activeReminderActions.value.filter((action) => buildReminderActionSummary(action, now.value).isSnoozed).length,
+);
+const urgentReminderCount = computed(
+  () =>
+    activeReminderActions.value.filter((action) => {
+      const summary = buildReminderActionSummary(action, now.value);
+      return !summary.isSnoozed && action.status !== 'abandoned';
+    }).length,
+);
+const todayRiskLevel = computed(() => {
+  if (unfinishedCount.value === 0 && totalCount.value > 0) {
+    return 'done';
+  }
+
+  if (urgentReminderCount.value > 0) {
+    return 'hot';
+  }
+
+  if (snoozedReminderCount.value > 0 || unfinishedCount.value > 0) {
+    return 'warm';
+  }
+
+  return 'calm';
+});
+const commandTitle = computed(() => {
+  if (totalCount.value === 0) {
+    return '今天没有任务';
+  }
+
+  if (unfinishedCount.value === 0) {
+    return '今日闭环';
+  }
+
+  if (urgentReminderCount.value > 0) {
+    return '先处理红灯';
+  }
+
+  return '把下一项拿下';
+});
+const commandMessage = computed(() => {
+  if (totalCount.value === 0) {
+    return '先给系统安排一个真正要坚持的动作。';
+  }
+
+  if (unfinishedCount.value === 0) {
+    return '今日任务全部完成，别再给自己加戏。';
+  }
+
+  if (urgentReminderCount.value > 0) {
+    return `有 ${urgentReminderCount.value} 个提醒已经到点，先处理最刺眼的那一个。`;
+  }
+
+  return `今日完成 ${completedCount.value} / ${totalCount.value}，剩下 ${unfinishedCount.value} 项。`;
+});
+const priorityAction = computed(() =>
+  [...activeReminderActions.value].sort((a, b) => {
+    const aSummary = buildReminderActionSummary(a, now.value);
+    const bSummary = buildReminderActionSummary(b, now.value);
+
+    if (a.status === 'abandoned' && b.status !== 'abandoned') {
+      return 1;
+    }
+
+    if (b.status === 'abandoned' && a.status !== 'abandoned') {
+      return -1;
+    }
+
+    if (aSummary.isSnoozed !== bSummary.isSnoozed) {
+      return aSummary.isSnoozed ? 1 : -1;
+    }
+
+    return bSummary.overdueMinutes - aSummary.overdueMinutes;
+  })[0],
+);
+const priorityHabit = computed(() => {
+  if (priorityAction.value) {
+    return habitStore.getHabitById(priorityAction.value.habitId);
+  }
+
+  return todayHabits.value.find((habit) => !checkinStore.isHabitCheckedToday(habit.id));
+});
+const priorityLabel = computed(() => {
+  if (!priorityAction.value) {
+    return '下一步';
+  }
+
+  if (priorityAction.value.status === 'abandoned') {
+    return '已放弃';
+  }
+
+  if (buildReminderActionSummary(priorityAction.value, now.value).isSnoozed) {
+    return '已推迟';
+  }
+
+  return '最高优先级';
+});
+const priorityMessage = computed(() => {
+  if (!priorityAction.value) {
+    return '还没到提醒时间，但可以提前把它处理掉。';
+  }
+
+  return getReminderStatusText(priorityAction.value.habitId) || '提醒已到，别只停在看见。';
+});
 const themeFeedback = computed(() => {
   const style = appStore.currentTheme.feedbackStyle;
 
@@ -213,15 +392,36 @@ const themeFeedback = computed(() => {
 const habitStatsMap = computed(() =>
   new Map(todayHabits.value.map((habit) => [habit.id, buildHabitStats(habit, checkinStore.checkIns)])),
 );
+const reminderActionMap = computed(() =>
+  new Map(reminderActions.value.filter((action) => action.date === todayKey.value).map((action) => [action.habitId, action])),
+);
+
+const refreshReminderActions = async () => {
+  await Promise.all(
+    todayHabits.value
+      .filter((habit) => habit.reminderEnabled && !checkinStore.isHabitCheckedToday(habit.id))
+      .map((habit) => reminderActionService.ensureAction(habit, todayKey.value, now.value)),
+  );
+  reminderActions.value = await reminderActionService.listActions();
+};
 
 const toggleCheckIn = async (habitId: string) => {
   if (checkinStore.isHabitCheckedToday(habitId)) {
     await checkinStore.undoCheckIn(habitId);
+    const habit = habitStore.getHabitById(habitId);
+
+    if (habit) {
+      await reminderActionService.reopen(habit, todayKey.value);
+      await refreshReminderActions();
+    }
     showToast('已取消今天的打卡');
     return;
   }
 
   await checkinStore.checkInHabit(habitId);
+  await reminderActionService.markCompleted(habitId, todayKey.value);
+  await cancelFollowupReminder(habitId, todayKey.value);
+  await refreshReminderActions();
 
   const habit = habitStore.getHabitById(habitId);
   const stats = buildHabitStatsById(habitId);
@@ -270,7 +470,112 @@ const getDowngradePrompt = (habitId: string) => {
   return buildDowngradeSuggestion(habit, stats.totalFailures, appStore.toneId)?.action ?? '';
 };
 
+const getReminderStatusText = (habitId: string) => {
+  if (checkinStore.isHabitCheckedToday(habitId)) {
+    return '';
+  }
+
+  const action = reminderActionMap.value.get(habitId);
+
+  if (!action || action.status === 'completed') {
+    return '';
+  }
+
+  const summary = buildReminderActionSummary(action, now.value);
+
+  if (action.status === 'abandoned') {
+    return '今天已放弃，原因已记录';
+  }
+
+  if (summary.isSnoozed && action.snoozedUntil) {
+    return `已推迟到 ${formatClock(action.snoozedUntil)}`;
+  }
+
+  if (action.status === 'started') {
+    return `已开始，提醒后已过 ${formatDuration(summary.overdueMinutes)}`;
+  }
+
+  return `提醒后已过 ${formatDuration(summary.overdueMinutes)}`;
+};
+
+const getTaskStateClass = (habitId: string) => {
+  if (checkinStore.isHabitCheckedToday(habitId)) {
+    return 'is-done';
+  }
+
+  const action = reminderActionMap.value.get(habitId);
+
+  if (!action) {
+    return 'is-waiting';
+  }
+
+  const summary = buildReminderActionSummary(action, now.value);
+
+  if (action.status === 'abandoned') {
+    return 'is-abandoned';
+  }
+
+  if (summary.isSnoozed) {
+    return 'is-snoozed';
+  }
+
+  if (action.status === 'started') {
+    return 'is-started';
+  }
+
+  return 'is-urgent';
+};
+
+const getTaskStateLabel = (habitId: string) => {
+  if (checkinStore.isHabitCheckedToday(habitId)) {
+    return '完成';
+  }
+
+  const action = reminderActionMap.value.get(habitId);
+
+  if (!action) {
+    return '待提醒';
+  }
+
+  if (action.status === 'abandoned') {
+    return '放弃';
+  }
+
+  if (buildReminderActionSummary(action, now.value).isSnoozed) {
+    return '推迟';
+  }
+
+  if (action.status === 'started') {
+    return '已开始';
+  }
+
+  return '到点';
+};
+
+const openReminderAction = (habitId: string) => {
+  void router.push({
+    path: `/reminders/${habitId}`,
+    query: { date: todayKey.value },
+  });
+};
+
 const buildHabitStatsById = (habitId: string) => habitStatsMap.value.get(habitId);
+
+const formatDuration = (minutes: number) => {
+  if (minutes < 60) {
+    return `${minutes} 分钟`;
+  }
+
+  const hours = Math.floor(minutes / 60);
+  const rest = minutes % 60;
+  return rest === 0 ? `${hours} 小时` : `${hours} 小时 ${rest} 分钟`;
+};
+
+const formatClock = (isoValue: string) =>
+  new Intl.DateTimeFormat('zh-CN', {
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(new Date(isoValue));
 
 const showToast = (message: string) => {
   toast.message = message;

@@ -34,6 +34,8 @@
 </template>
 
 <script setup lang="ts">
+import { App as CapacitorApp } from '@capacitor/app';
+import { LocalNotifications } from '@capacitor/local-notifications';
 import {
   IonApp,
   IonIcon,
@@ -44,12 +46,15 @@ import {
   IonTabs,
 } from '@ionic/vue';
 import { barChartOutline, calendarClearOutline, chatbubblesOutline, listOutline, settingsOutline } from 'ionicons/icons';
-import { computed, onMounted } from 'vue';
+import { computed, onMounted, onUnmounted } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
 import { useAppStore } from '@/stores/appStore';
 import { useHabitStore } from '@/stores/habitStore';
 
 const appStore = useAppStore();
 const habitStore = useHabitStore();
+const route = useRoute();
+const router = useRouter();
 const todayIcon = calendarClearOutline;
 const tasksIcon = listOutline;
 const statsIcon = barChartOutline;
@@ -84,5 +89,72 @@ const themeStyle = computed(() => {
 onMounted(() => {
   appStore.loadSettings();
   void habitStore.refreshScheduledReminders();
+  void registerNativeBackHandler();
+  void registerNotificationActionHandler();
 });
+
+onUnmounted(() => {
+  void backButtonHandle?.remove();
+  void notificationActionHandle?.remove();
+});
+
+let backButtonHandle: { remove: () => Promise<void> } | undefined;
+let notificationActionHandle: { remove: () => Promise<void> } | undefined;
+
+const registerNativeBackHandler = async () => {
+  backButtonHandle = await CapacitorApp.addListener('backButton', () => {
+    const fallbackPath = getBackFallbackPath();
+
+    if (fallbackPath) {
+      void router.replace(fallbackPath);
+    }
+  });
+};
+
+const getBackFallbackPath = () => {
+  if (route.name === 'reminder-action') {
+    return '/today';
+  }
+
+  if (route.name === 'task-edit') {
+    return route.params.id ? `/tasks/${String(route.params.id)}` : '/tasks';
+  }
+
+  if (route.name === 'task-detail' || route.name === 'task-new' || route.name === 'task-ai-plan') {
+    return '/tasks';
+  }
+
+  if (route.name === 'weekly-report') {
+    return '/review';
+  }
+
+  if (route.name === 'reward-shop') {
+    return '/stats';
+  }
+
+  return '';
+};
+
+const registerNotificationActionHandler = async () => {
+  try {
+    notificationActionHandle = await LocalNotifications.addListener('localNotificationActionPerformed', (event) => {
+      const extra = event.notification.extra as
+        | {
+            type?: string;
+            habitId?: string;
+            date?: string;
+          }
+        | undefined;
+
+      if (extra?.type === 'habit-reminder' && extra.habitId) {
+        void router.replace({
+          path: `/reminders/${extra.habitId}`,
+          query: extra.date ? { date: extra.date } : undefined,
+        });
+      }
+    });
+  } catch {
+    // Browser preview can run without the native notification bridge.
+  }
+};
 </script>

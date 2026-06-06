@@ -1,10 +1,13 @@
 import { LocalNotifications } from '@capacitor/local-notifications';
 import type { Habit } from '@/types/habit';
 import { formatRepeatRule, shouldHabitRunOnDate } from '@/modules/habits/repeatRules';
+import { appSettingsRepository, type ReminderIntensity } from '@/modules/settings/settingsRepository';
 import { addDays, toDateKey } from '@/utils/date';
 
-const reminderChannelId = 'habit-reminders';
-const scheduledReminderSlots = 14;
+const normalReminderChannelId = 'habit-reminders-normal';
+const strongReminderChannelId = 'habit-reminders-alarm-v2';
+const strongReminderSound = 'discipline_alert.wav';
+const maxScheduledReminderSlots = 30;
 const maxJavaInt = 2_147_483_647;
 
 export type ReminderSyncResult = {
@@ -103,8 +106,9 @@ export const syncDailyReminder = async (habit: Habit): Promise<ReminderSyncResul
       };
     }
 
-    await ensureReminderChannel();
-    const upcomingReminderDates = getUpcomingReminderDates(habit);
+    const settings = await appSettingsRepository.get();
+    await ensureReminderChannel(settings.reminderIntensity);
+    const upcomingReminderDates = getUpcomingReminderDates(habit, settings.reminderScheduleCount);
 
     if (upcomingReminderDates.length === 0) {
       return {
@@ -115,14 +119,13 @@ export const syncDailyReminder = async (habit: Habit): Promise<ReminderSyncResul
     }
 
     const scheduledIds = await scheduleDailyReminder(habit, upcomingReminderDates);
-    const pendingCount = await getPendingReminderCount(habit.id);
     const exactAlarm = await checkExactAlarmStatus();
     const nextReminderText = formatReminderDate(upcomingReminderDates[0]);
 
     return {
       scheduled: true,
       permissionGranted: true,
-      message: `${habit.reminderTime} 的${formatRepeatRule(habit.repeatRule)}提醒已设置；已计算 ${upcomingReminderDates.length} 条，系统确认 ${pendingCount ?? 0} 条，下一次 ${nextReminderText}${scheduledIds.length === 0 ? '；但 native schedule 没返回 id' : ''}${exactAlarm === 'denied' ? '；通知权限已开，但准点触发还需要允许“闹钟与提醒”' : ''}`,
+      message: `${habit.reminderTime} 的${formatRepeatRule(habit.repeatRule)}提醒已设置，下一次 ${nextReminderText}${scheduledIds.length === 0 ? '；如未响请到设置页查看排查信息' : ''}${exactAlarm === 'denied' ? '；准点触发还需要允许“闹钟与提醒”' : ''}`,
     };
   } catch (error) {
     return {
@@ -141,13 +144,14 @@ export const reconcileHabitReminders = async (habits: Habit[]) => {
       return;
     }
 
-    await ensureReminderChannel();
+    const settings = await appSettingsRepository.get();
+    await ensureReminderChannel(settings.reminderIntensity);
 
     for (const habit of habits) {
       await cancelDailyReminder(habit.id);
 
       if (habit.reminderEnabled) {
-        await scheduleDailyReminder(habit);
+        await scheduleDailyReminder(habit, undefined, settings.reminderScheduleCount, settings.reminderIntensity);
       }
     }
   } catch {
@@ -165,30 +169,70 @@ export const cancelDailyReminder = async (habitId: string) => {
   }
 };
 
-export const scheduleDailyReminder = async (habit: Habit, reminderDates = getUpcomingReminderDates(habit)) => {
+export const scheduleDailyReminder = async (
+  habit: Habit,
+  reminderDates?: Date[],
+  reminderScheduleCount?: number,
+  reminderIntensity?: ReminderIntensity,
+) => {
   if (!habit.reminderEnabled) {
     return [];
   }
 
-  if (reminderDates.length === 0) {
+  const settings = await appSettingsRepository.get();
+  const intensity = reminderIntensity ?? settings.reminderIntensity;
+  const dates = reminderDates ?? getUpcomingReminderDates(habit, reminderScheduleCount ?? settings.reminderScheduleCount);
+
+  if (dates.length === 0) {
     return [];
   }
 
+  await ensureReminderChannel(intensity);
+
   const result = await LocalNotifications.schedule({
-    notifications: reminderDates.map((at, slot) => ({
-      id: getHabitNotificationId(habit.id, slot),
-      title: '自律打卡提醒',
-      body: `现在是 ${habit.name} 的时间，别装没看见。`,
-      channelId: reminderChannelId,
-      autoCancel: true,
-      schedule: {
-        at,
-        allowWhileIdle: true,
-      },
-    })),
+    notifications: dates.map((at, slot) => buildHabitReminderNotification(habit, at, slot, intensity)),
   });
 
   return result.notifications.map((notification) => notification.id);
+};
+
+export const scheduleFollowupReminder = async (habit: Habit, at: Date) => {
+  const permission = await requestReminderPermission();
+
+  if (permission.display !== 'granted') {
+    return undefined;
+  }
+
+  const settings = await appSettingsRepository.get();
+  const intensity = settings.reminderIntensity;
+  await ensureReminderChannel(intensity);
+
+  const notification = {
+    ...buildHabitReminderNotification(habit, at, maxScheduledReminderSlots + 1, intensity),
+    id: getFollowupNotificationId(habit.id, toDateKey(at)),
+    title: `别继续拖：${habit.name}`,
+    body: '推迟时间到了，现在处理这件事。',
+    largeBody: `你刚才已经推迟过「${habit.name}」。现在打开 App 处理，别让 10 分钟变成一整晚。`,
+  };
+
+  await LocalNotifications.cancel({
+    notifications: [{ id: notification.id }],
+  });
+  const result = await LocalNotifications.schedule({
+    notifications: [notification],
+  });
+
+  return result.notifications[0]?.id;
+};
+
+export const cancelFollowupReminder = async (habitId: string, date = toDateKey(new Date())) => {
+  try {
+    await LocalNotifications.cancel({
+      notifications: [{ id: getFollowupNotificationId(habitId, date) }],
+    });
+  } catch {
+    // Browser preview may not support Capacitor local notifications.
+  }
 };
 
 export const sendTestReminder = async (): Promise<ReminderSyncResult> => {
@@ -203,14 +247,21 @@ export const sendTestReminder = async (): Promise<ReminderSyncResult> => {
       };
     }
 
-    await ensureReminderChannel();
+    const settings = await appSettingsRepository.get();
+    await ensureReminderChannel(settings.reminderIntensity);
     await LocalNotifications.schedule({
       notifications: [
         {
           id: 900001,
-          title: '自律打卡测试提醒',
-          body: '如果你看到这条通知，说明本地提醒可以工作。',
-          channelId: reminderChannelId,
+          title: settings.reminderIntensity === 'strong' ? '自律打卡强提醒测试' : '自律打卡提醒测试',
+          body: settings.reminderIntensity === 'strong' ? '这条测试会使用强提醒渠道。' : '这条测试会使用普通提醒渠道。',
+          largeBody:
+            settings.reminderIntensity === 'strong'
+              ? '这条测试会使用强提醒渠道：高重要性、震动、锁屏可见、展开后显示完整提醒内容。'
+              : '这条测试会使用普通提醒渠道：会正常响铃/展示，但文案和打扰程度更克制。',
+          summaryText: settings.reminderIntensity === 'strong' ? '强提醒测试' : '普通提醒测试',
+          channelId: getReminderChannelId(settings.reminderIntensity),
+          ...(settings.reminderIntensity === 'strong' ? { sound: strongReminderSound } : {}),
           autoCancel: true,
           schedule: {
             at: new Date(Date.now() + 1000),
@@ -234,21 +285,86 @@ export const sendTestReminder = async (): Promise<ReminderSyncResult> => {
   }
 };
 
-const ensureReminderChannel = async () => {
+const ensureReminderChannel = async (intensity: ReminderIntensity) => {
   try {
+    if (intensity === 'normal') {
+      await LocalNotifications.createChannel({
+        id: normalReminderChannelId,
+        name: '打卡提醒',
+        description: '用于到点提醒你执行自律任务',
+        importance: 4,
+        visibility: 1,
+        lights: true,
+        lightColor: '#0f766e',
+        vibration: true,
+      });
+      return;
+    }
+
     await LocalNotifications.createChannel({
-      id: reminderChannelId,
-      name: '打卡提醒',
-      description: '用于每天到点提醒你执行打卡任务',
+      id: strongReminderChannelId,
+      name: '打卡强提醒',
+      description: '用于到点后更明显地提醒你执行自律任务',
       importance: 5,
       visibility: 1,
       lights: true,
+      lightColor: '#ef4444',
+      sound: strongReminderSound,
       vibration: true,
     });
   } catch {
     // Notification channels are Android-only; web preview can ignore this.
   }
 };
+
+const buildHabitReminderNotification = (habit: Habit, at: Date, slot: number, intensity: ReminderIntensity) => {
+  const repeatLabel = formatRepeatRule(habit.repeatRule);
+
+  if (intensity === 'normal') {
+    return {
+      id: getHabitNotificationId(habit.id, slot),
+      title: `打卡提醒：${habit.name}`,
+      body: `${habit.reminderTime} 到了，记得完成今天这一项。`,
+      largeBody: `${habit.reminderTime} 到了，任务是「${habit.name}」。\n\n完成后回到 App 打卡，保持今天的节奏。\n重复规则：${repeatLabel}`,
+      summaryText: '今日自律任务',
+      channelId: getReminderChannelId(intensity),
+      extra: buildReminderNotificationExtra(habit, at),
+      autoCancel: true,
+      group: 'habit-reminders',
+      schedule: {
+        at,
+        allowWhileIdle: true,
+      },
+    };
+  }
+
+  return {
+    id: getHabitNotificationId(habit.id, slot),
+    title: `该打卡了：${habit.name}`,
+    body: `${habit.reminderTime} 到了，今天这项别滑过去。`,
+    largeBody: `${habit.reminderTime} 到了，任务是「${habit.name}」。\n\n现在打开 App 打卡，别让这次提醒变成背景噪音。\n重复规则：${repeatLabel}`,
+    summaryText: '今日必须处理的自律任务',
+    channelId: getReminderChannelId(intensity),
+    sound: strongReminderSound,
+    extra: buildReminderNotificationExtra(habit, at),
+    autoCancel: true,
+    group: 'habit-reminders',
+    schedule: {
+      at,
+      allowWhileIdle: true,
+    },
+  };
+};
+
+const getReminderChannelId = (intensity: ReminderIntensity) =>
+  intensity === 'strong' ? strongReminderChannelId : normalReminderChannelId;
+
+const buildReminderNotificationExtra = (habit: Habit, at: Date) => ({
+  type: 'habit-reminder',
+  habitId: habit.id,
+  date: toDateKey(at),
+  remindedAt: at.toISOString(),
+});
 
 const checkExactAlarmStatus = async () => {
   try {
@@ -272,10 +388,10 @@ const getPendingReminderCount = async (habitId?: string) => {
 const getPermissionMessage = (display: string, exactAlarm?: string, pendingCount?: number) => {
   if (display === 'granted') {
     if (exactAlarm === 'denied') {
-      return `通知权限已开启；闹钟与提醒未允许，测试通知能响，但定时任务可能不会准点触发。当前已排入未来 ${pendingCount ?? 0} 条提醒`;
+      return '通知权限已开启；闹钟与提醒未允许，测试通知能响，但定时任务可能不会准点触发。';
     }
 
-    return `通知权限已开启；闹钟与提醒也可用。当前已排入未来 ${pendingCount ?? 0} 条提醒`;
+    return `通知权限已开启；闹钟与提醒也可用。${pendingCount === 0 ? '当前还没有排入提醒。' : '任务提醒可以正常工作。'}`;
   }
 
   if (display === 'denied') {
@@ -285,12 +401,12 @@ const getPermissionMessage = (display: string, exactAlarm?: string, pendingCount
   return '通知权限尚未确认';
 };
 
-const getUpcomingReminderDates = (habit: Habit) => {
+const getUpcomingReminderDates = (habit: Habit, reminderScheduleCount: number) => {
   const [hour, minute] = habit.reminderTime.split(':').map(Number);
   const now = new Date();
   const upcomingReminderDates: Date[] = [];
 
-  for (let dayOffset = 0; upcomingReminderDates.length < scheduledReminderSlots && dayOffset < 90; dayOffset += 1) {
+  for (let dayOffset = 0; upcomingReminderDates.length < reminderScheduleCount && dayOffset < 90; dayOffset += 1) {
     const candidate = addDays(now, dayOffset);
     candidate.setHours(hour, minute, 0, 0);
 
@@ -309,10 +425,15 @@ const getUpcomingReminderDates = (habit: Habit) => {
 const getHabitNotificationIds = (habitId: string) =>
   [
     toJavaIntId(hashString(habitId)),
-    ...Array.from({ length: scheduledReminderSlots }, (_, slot) => getHabitNotificationId(habitId, slot)),
+    ...Array.from({ length: maxScheduledReminderSlots }, (_, slot) => getHabitNotificationId(habitId, slot)),
+    ...Array.from({ length: maxScheduledReminderSlots }, (_, dayOffset) =>
+      getFollowupNotificationId(habitId, toDateKey(addDays(new Date(), dayOffset))),
+    ),
   ].filter((id, index, ids) => ids.indexOf(id) === index);
 
 const getHabitNotificationId = (habitId: string, slot: number) => toJavaIntId(hashString(`${habitId}:${slot}`));
+
+const getFollowupNotificationId = (habitId: string, date: string) => toJavaIntId(hashString(`${habitId}:${date}:followup`));
 
 const formatReminderDate = (date: Date) =>
   date.toLocaleString('zh-CN', {

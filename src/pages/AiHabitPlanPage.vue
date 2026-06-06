@@ -23,19 +23,22 @@
             <p>先不接真实 AI，只用本地规则生成可创建的任务草案。</p>
           </div>
 
-          <IonList lines="full" class="form-list">
-            <IonItem>
-              <IonTextarea
+          <VanForm class="van-form-panel">
+            <VanCellGroup inset>
+              <VanField
                 v-model="goal"
-                auto-grow
                 label="长期目标"
-                label-placement="stacked"
+                type="textarea"
+                autosize
+                clearable
+                :maxlength="120"
+                show-word-limit
                 placeholder="例如：我想开始规律运动、减少熬夜、准备英语考试"
               />
-            </IonItem>
-          </IonList>
+            </VanCellGroup>
+          </VanForm>
 
-          <IonButton expand="block" class="primary-action" @click="generatePlan">生成计划</IonButton>
+          <VanButton block type="primary" class="primary-action" @click="generatePlan">生成计划</VanButton>
         </section>
 
         <section v-if="hasGenerated" class="section-block">
@@ -52,47 +55,36 @@
               </div>
               <p>{{ suggestion.title }}：{{ suggestion.reason }}</p>
               <small>失败阈值 {{ suggestion.draft.failureThreshold }} 次 · {{ suggestion.draft.rewardText }}</small>
-              <IonButton
-                expand="block"
+              <VanButton
+                block
+                type="primary"
                 size="small"
                 :disabled="isCreated(suggestion.draft.name) || isSaving"
                 @click="createSuggestedHabit(suggestion)"
               >
                 {{ isCreated(suggestion.draft.name) ? '已创建' : '创建这个任务' }}
-              </IonButton>
+              </VanButton>
             </div>
           </div>
         </section>
       </main>
     </IonContent>
-
-    <IonToast
-      :is-open="toast.isOpen"
-      :message="toast.message"
-      :duration="1800"
-      position="top"
-      @didDismiss="toast.isOpen = false"
-    />
   </IonPage>
 </template>
 
 <script setup lang="ts">
-import { computed, reactive, ref } from 'vue';
+import { computed, ref } from 'vue';
 import {
   IonBackButton,
-  IonButton,
   IonButtons,
   IonContent,
   IonHeader,
-  IonItem,
-  IonList,
   IonPage,
-  IonTextarea,
   IonTitle,
-  IonToast,
   IonToolbar,
   onIonViewWillEnter,
 } from '@ionic/vue';
+import { Button as VanButton, CellGroup as VanCellGroup, Field as VanField, Form as VanForm, showToast } from 'vant';
 import { buildLocalAiHabitPlan, type AiHabitPlanSuggestion } from '@/modules/ai/aiHabitPlanService';
 import { useAppStore } from '@/stores/appStore';
 import { useHabitStore } from '@/stores/habitStore';
@@ -103,10 +95,6 @@ const goal = ref('');
 const hasGenerated = ref(false);
 const createdNames = ref<string[]>([]);
 const isSaving = ref(false);
-const toast = reactive({
-  isOpen: false,
-  message: '',
-});
 
 onIonViewWillEnter(() => {
   appStore.loadSettings();
@@ -141,9 +129,4 @@ const createSuggestedHabit = async (suggestion: AiHabitPlanSuggestion) => {
 
 const isCreated = (name: string) =>
   createdNames.value.includes(name) || habitStore.habits.some((habit) => habit.name === name);
-
-const showToast = (message: string) => {
-  toast.message = message;
-  toast.isOpen = true;
-};
 </script>
