@@ -53,7 +53,7 @@
         <section v-if="habit" class="section-block">
           <div class="section-heading">
             <h2>最近 7 天</h2>
-            <p>点击某一天可补打卡或取消记录。</p>
+            <p>未完成的执行日可补打卡；已完成记录会锁定，避免事后反复修改。</p>
           </div>
 
           <div v-if="statusMessage" class="form-note">{{ statusMessage }}</div>
@@ -65,7 +65,7 @@
               class="history-day"
               :class="{ checked: day.checked, muted: day.isBeforeCreated || !day.isScheduled }"
               type="button"
-              :disabled="day.isBeforeCreated || !day.isScheduled"
+              :disabled="day.isBeforeCreated || !day.isScheduled || day.checked"
               @click="toggleHistoryDate(day.date, day.checked)"
             >
               <strong>{{ formatDay(day.date) }}</strong>
@@ -221,8 +221,6 @@ const toggleHistoryDate = async (date: string, checked: boolean) => {
   }
 
   if (checked) {
-    await checkinStore.undoCheckIn(habit.value.id, date);
-    statusMessage.value = `${formatDay(date)} 的打卡已取消`;
     return;
   }
 

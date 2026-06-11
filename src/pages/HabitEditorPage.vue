@@ -86,6 +86,14 @@
             </button>
           </div>
 
+          <div v-if="draft.repeatRule.type === 'weeklyTarget'" class="weekly-target-panel">
+            <div>
+              <strong>每周完成次数</strong>
+              <small>适合运动、冥想这类不固定星期几，但一周要达标的任务。</small>
+            </div>
+            <VanStepper v-model="draft.repeatRule.timesPerWeek" :min="1" :max="7" integer />
+          </div>
+
           <div v-if="errorMessage" class="form-error">{{ errorMessage }}</div>
           <div v-if="reminderMessage" class="form-note">{{ reminderMessage }}</div>
 
@@ -141,7 +149,16 @@ import {
   IonToolbar,
   onIonViewWillEnter,
 } from '@ionic/vue';
-import { Button as VanButton, CellGroup as VanCellGroup, Field as VanField, Form as VanForm, Popup as VanPopup, Switch as VanSwitch, TimePicker as VanTimePicker } from 'vant';
+import {
+  Button as VanButton,
+  CellGroup as VanCellGroup,
+  Field as VanField,
+  Form as VanForm,
+  Popup as VanPopup,
+  Stepper as VanStepper,
+  Switch as VanSwitch,
+  TimePicker as VanTimePicker,
+} from 'vant';
 import { computed, reactive, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { createEmptyHabitDraft, toHabitDraft, validateHabitDraft } from '@/modules/habits/habitService';
@@ -179,6 +196,7 @@ const repeatRuleOptions: { type: RepeatRule['type']; label: string; description:
   { type: 'weekdays', label: '工作日', description: '周一到周五执行。' },
   { type: 'weekends', label: '周末', description: '周六和周日执行。' },
   { type: 'weekly', label: '每周几', description: '自己选择一周中的执行日。' },
+  { type: 'weeklyTarget', label: '每周次数', description: '不固定日期，只要求一周完成几次。' },
 ];
 
 onIonViewWillEnter(async () => {
@@ -238,6 +256,14 @@ const setRepeatRule = (type: RepeatRule['type']) => {
     draft.repeatRule = {
       type,
       daysOfWeek: draft.repeatRule.type === 'weekly' ? draft.repeatRule.daysOfWeek : [1],
+    };
+    return;
+  }
+
+  if (type === 'weeklyTarget') {
+    draft.repeatRule = {
+      type,
+      timesPerWeek: draft.repeatRule.type === 'weeklyTarget' ? draft.repeatRule.timesPerWeek : 4,
     };
     return;
   }

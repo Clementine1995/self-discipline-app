@@ -102,12 +102,20 @@ let backButtonHandle: { remove: () => Promise<void> } | undefined;
 let notificationActionHandle: { remove: () => Promise<void> } | undefined;
 
 const registerNativeBackHandler = async () => {
-  backButtonHandle = await CapacitorApp.addListener('backButton', () => {
+  backButtonHandle = await CapacitorApp.addListener('backButton', (event) => {
     const fallbackPath = getBackFallbackPath();
 
     if (fallbackPath) {
       void router.replace(fallbackPath);
+      return;
     }
+
+    if (route.name === 'today' || !event.canGoBack) {
+      void CapacitorApp.exitApp();
+      return;
+    }
+
+    router.back();
   });
 };
 

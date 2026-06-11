@@ -32,3 +32,13 @@ export const eachDateKeyBetween = (startDateKey: string, endDateKey: string) => 
 
 export const getRecentDateKeys = (days: number, endDate = new Date()) =>
   Array.from({ length: days }, (_, index) => toDateKey(addDays(endDate, index - days + 1)));
+
+export const getWeekRange = (dateKey: string) => {
+  const date = parseDateKey(dateKey);
+  const day = date.getDay();
+  const mondayOffset = day === 0 ? -6 : 1 - day;
+  const start = toDateKey(addDays(date, mondayOffset));
+  const end = toDateKey(addDays(parseDateKey(start), 6));
+
+  return { start, end };
+};

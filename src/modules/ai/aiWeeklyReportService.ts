@@ -77,8 +77,12 @@ const buildHabitWeeklySummary = (
   const habitCheckIns = checkIns.filter((checkIn) => checkIn.habitId === habit.id);
   const checkedDates = new Set(habitCheckIns.map((checkIn) => checkIn.date));
   const scheduledDates = weekDates.filter((date) => shouldHabitRunOnDate(habit, date));
-  const completedCount = scheduledDates.filter((date) => checkedDates.has(date)).length;
-  const scheduledCount = scheduledDates.length;
+  const scheduledCount =
+    habit.repeatRule.type === 'weeklyTarget'
+      ? Math.min(habit.repeatRule.timesPerWeek, scheduledDates.length)
+      : scheduledDates.length;
+  const rawCompletedCount = scheduledDates.filter((date) => checkedDates.has(date)).length;
+  const completedCount = Math.min(rawCompletedCount, scheduledCount);
   const stats = buildHabitStats(habit, checkIns, endDate);
 
   return {

@@ -8,3 +8,9 @@ export const defaultRewardRules: RewardRule[] = [
 
 export const findUnlockedReward = (currentStreak: number) =>
   [...defaultRewardRules].reverse().find((rule) => currentStreak >= rule.streakDays);
+
+export const findNewlyUnlockedReward = (currentStreak: number, previousLongestStreak: number) =>
+  defaultRewardRules.find((rule) => currentStreak === rule.streakDays && previousLongestStreak < rule.streakDays);
+
+export const findNextRewardMilestone = (currentStreak: number) =>
+  defaultRewardRules.find((rule) => currentStreak < rule.streakDays);

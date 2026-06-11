@@ -63,6 +63,35 @@
           <div class="theme-feedback-mark" aria-hidden="true">{{ themeFeedback.mark }}</div>
         </section>
 
+        <section v-if="completionFeedback" class="completion-reward-panel" :class="{ milestone: completionFeedback.milestoneUnlocked }">
+          <div class="completion-reward-header">
+            <div>
+              <p class="eyebrow">{{ completionFeedback.habitName }}</p>
+              <h2>{{ completionFeedback.title }}</h2>
+            </div>
+            <IonButton fill="clear" size="small" @click="completionFeedback = undefined">收起</IonButton>
+          </div>
+          <p>{{ completionFeedback.message }}</p>
+          <div class="completion-reward-grid">
+            <div>
+              <span>本次获得</span>
+              <strong>+{{ completionFeedback.pointsGained }}</strong>
+            </div>
+            <div>
+              <span>当前连续</span>
+              <strong>{{ completionFeedback.currentStreak }} 天</strong>
+            </div>
+            <div>
+              <span>总积分</span>
+              <strong>{{ completionFeedback.totalPoints }}</strong>
+            </div>
+            <div>
+              <span>下个目标</span>
+              <strong>{{ completionFeedback.nextMilestoneLabel }}</strong>
+            </div>
+          </div>
+        </section>
+
         <section class="section-block">
           <div class="section-heading">
             <h2>今日任务</h2>
@@ -84,9 +113,6 @@
               <IonLabel>
                 <div class="task-title-row">
                   <h3>{{ habit.name }}</h3>
-                  <span v-if="!checkinStore.isHabitCheckedToday(habit.id)" class="task-state-pill">
-                    {{ getTaskStateLabel(habit.id) }}
-                  </span>
                 </div>
                 <p>{{ habit.reminderTime }} 提醒 · {{ formatRepeatRule(habit.repeatRule) }}</p>
                 <p v-if="getReminderStatusText(habit.id)" class="habit-prompt urgent">{{ getReminderStatusText(habit.id) }}</p>
@@ -94,9 +120,14 @@
                 <p v-if="getDowngradePrompt(habit.id)" class="habit-prompt muted">{{ getDowngradePrompt(habit.id) }}</p>
               </IonLabel>
               <div class="task-actions">
+                <span v-if="!checkinStore.isHabitCheckedToday(habit.id)" class="task-state-pill">
+                  {{ getTaskStateLabel(habit.id) }}
+                </span>
                 <IonButton
+                  class="task-check-button"
                   :fill="checkinStore.isHabitCheckedToday(habit.id) ? 'solid' : 'outline'"
                   size="small"
+                  :disabled="checkinStore.isHabitCheckedToday(habit.id)"
                   @click="toggleCheckIn(habit.id)"
                 >
                   {{ checkinStore.isHabitCheckedToday(habit.id) ? '已完成' : '打卡' }}
@@ -156,14 +187,26 @@ import { useHabitStore } from '@/stores/habitStore';
 import { useCheckinStore } from '@/stores/checkinStore';
 import { buildHabitStats, calculateCompletionRate } from '@/modules/stats/statsRules';
 import { findTriggeredPunishment } from '@/modules/punishments/punishmentRules';
-import { findUnlockedReward } from '@/modules/rewards/rewardRules';
+import { findNewlyUnlockedReward, findNextRewardMilestone, findUnlockedReward } from '@/modules/rewards/rewardRules';
 import { renderTonePrompt } from '@/modules/tones/toneCopy';
 import { useAppStore } from '@/stores/appStore';
 import { buildDowngradeSuggestion } from '@/modules/recovery/downgradeRules';
-import { formatRepeatRule, shouldHabitRunOnDate } from '@/modules/habits/repeatRules';
+import { formatRepeatRule, shouldHabitBeActiveOnDate } from '@/modules/habits/repeatRules';
 import { buildReminderActionSummary, reminderActionService } from '@/modules/reminderActions/reminderActionService';
 import { cancelFollowupReminder } from '@/modules/reminders/reminderService';
+import { buildPointSummary, getMilestoneBonusForStreak, pointsPerCheckIn } from '@/modules/points/pointRules';
 import { toDateKey } from '@/utils/date';
+
+type CompletionFeedback = {
+  habitName: string;
+  title: string;
+  message: string;
+  pointsGained: number;
+  currentStreak: number;
+  totalPoints: number;
+  nextMilestoneLabel: string;
+  milestoneUnlocked: boolean;
+};
 
 const habitStore = useHabitStore();
 const checkinStore = useCheckinStore();
@@ -180,6 +223,7 @@ const rewardAlert = reactive({
   isOpen: false,
   message: '',
 });
+const completionFeedback = ref<CompletionFeedback>();
 const rewardAlertButtons = ['知道了'];
 
 onIonViewWillEnter(async () => {
@@ -208,8 +252,16 @@ const todayLabel = computed(() =>
 );
 
 const todayKey = computed(() => toDateKey(new Date()));
-const todayHabits = computed(() => habitStore.habits.filter((habit) => shouldHabitRunOnDate(habit, todayKey.value)));
-const todayHabitIds = computed(() => new Set(todayHabits.value.map((habit) => habit.id)));
+const scheduledTodayHabits = computed(() =>
+  habitStore.habits.filter((habit) => shouldHabitBeActiveOnDate(habit, checkinStore.checkIns, todayKey.value)),
+);
+const todayHabits = computed(() =>
+  scheduledTodayHabits.value
+    .map((habit, index) => ({ habit, index }))
+    .sort((a, b) => compareTodayHabits(a.habit.id, b.habit.id, a.index, b.index))
+    .map((item) => item.habit),
+);
+const todayHabitIds = computed(() => new Set(scheduledTodayHabits.value.map((habit) => habit.id)));
 const totalCount = computed(() => todayHabits.value.length);
 const completedCount = computed(
   () =>
@@ -398,7 +450,7 @@ const reminderActionMap = computed(() =>
 
 const refreshReminderActions = async () => {
   await Promise.all(
-    todayHabits.value
+    scheduledTodayHabits.value
       .filter((habit) => habit.reminderEnabled && !checkinStore.isHabitCheckedToday(habit.id))
       .map((habit) => reminderActionService.ensureAction(habit, todayKey.value, now.value)),
   );
@@ -407,36 +459,35 @@ const refreshReminderActions = async () => {
 
 const toggleCheckIn = async (habitId: string) => {
   if (checkinStore.isHabitCheckedToday(habitId)) {
-    await checkinStore.undoCheckIn(habitId);
-    const habit = habitStore.getHabitById(habitId);
-
-    if (habit) {
-      await reminderActionService.reopen(habit, todayKey.value);
-      await refreshReminderActions();
-    }
-    showToast('已取消今天的打卡');
     return;
   }
+
+  const habit = habitStore.getHabitById(habitId);
+  const previousStats = habit ? buildHabitStats(habit, checkinStore.checkIns) : undefined;
 
   await checkinStore.checkInHabit(habitId);
   await reminderActionService.markCompleted(habitId, todayKey.value);
   await cancelFollowupReminder(habitId, todayKey.value);
   await refreshReminderActions();
 
-  const habit = habitStore.getHabitById(habitId);
   const stats = buildHabitStatsById(habitId);
-  const reward = stats ? findUnlockedReward(stats.currentStreak) : undefined;
-  const message = reward
-    ? renderTonePrompt(appStore.toneId, 'reward', reward.message)
-    : `${habit?.name ?? '任务'} 已完成，今天这一格拿下了。`;
+  const reward = stats && previousStats ? findNewlyUnlockedReward(stats.currentStreak, previousStats.longestStreak) : undefined;
+  const pointSummary = buildPointSummary(habitStore.habits, checkinStore.checkIns, todayKey.value);
 
-  if (reward) {
-    rewardAlert.message = message;
-    rewardAlert.isOpen = true;
-    return;
+  if (habit && stats) {
+    completionFeedback.value = buildCompletionFeedback({
+      habitName: habit.name,
+      currentStreak: stats.currentStreak,
+      totalPoints: pointSummary.totalPoints,
+      rewardMessage: reward?.message,
+      rewardStreakDays: reward?.streakDays,
+    });
   }
 
-  showToast(message);
+  if (reward && completionFeedback.value) {
+    rewardAlert.message = `${completionFeedback.value.habitName} 连续 ${completionFeedback.value.currentStreak} 天。\n${completionFeedback.value.message}\n本次 +${completionFeedback.value.pointsGained} 分，总积分 ${completionFeedback.value.totalPoints}。`;
+    rewardAlert.isOpen = true;
+  }
 };
 
 const getHabitPrompt = (habitId: string) => {
@@ -550,6 +601,99 @@ const getTaskStateLabel = (habitId: string) => {
   }
 
   return '到点';
+};
+
+const compareTodayHabits = (firstHabitId: string, secondHabitId: string, firstIndex: number, secondIndex: number) => {
+  const firstPriority = getTodaySortPriority(firstHabitId);
+  const secondPriority = getTodaySortPriority(secondHabitId);
+
+  if (firstPriority !== secondPriority) {
+    return firstPriority - secondPriority;
+  }
+
+  const firstAction = reminderActionMap.value.get(firstHabitId);
+  const secondAction = reminderActionMap.value.get(secondHabitId);
+
+  if (firstAction && secondAction) {
+    const firstSummary = buildReminderActionSummary(firstAction, now.value);
+    const secondSummary = buildReminderActionSummary(secondAction, now.value);
+
+    if (firstSummary.overdueMinutes !== secondSummary.overdueMinutes) {
+      return secondSummary.overdueMinutes - firstSummary.overdueMinutes;
+    }
+  }
+
+  const firstHabit = habitStore.getHabitById(firstHabitId);
+  const secondHabit = habitStore.getHabitById(secondHabitId);
+  const firstReminderTime = firstHabit ? getReminderTimeValue(firstHabit.reminderTime) : 0;
+  const secondReminderTime = secondHabit ? getReminderTimeValue(secondHabit.reminderTime) : 0;
+
+  if (firstReminderTime !== secondReminderTime) {
+    return firstReminderTime - secondReminderTime;
+  }
+
+  return firstIndex - secondIndex;
+};
+
+const getTodaySortPriority = (habitId: string) => {
+  if (checkinStore.isHabitCheckedToday(habitId)) {
+    return 5;
+  }
+
+  const action = reminderActionMap.value.get(habitId);
+
+  if (!action) {
+    return 3;
+  }
+
+  const summary = buildReminderActionSummary(action, now.value);
+
+  if (action.status === 'abandoned') {
+    return 4;
+  }
+
+  if (summary.isSnoozed) {
+    return 2;
+  }
+
+  return action.status === 'started' ? 0 : 1;
+};
+
+const getReminderTimeValue = (reminderTime: string) => {
+  const [hour = 0, minute = 0] = reminderTime.split(':').map(Number);
+  return hour * 60 + minute;
+};
+
+const buildCompletionFeedback = ({
+  habitName,
+  currentStreak,
+  totalPoints,
+  rewardMessage,
+  rewardStreakDays,
+}: {
+  habitName: string;
+  currentStreak: number;
+  totalPoints: number;
+  rewardMessage?: string;
+  rewardStreakDays?: number;
+}): CompletionFeedback => {
+  const nextReward = findNextRewardMilestone(currentStreak);
+  const milestoneBonus = rewardStreakDays ? getMilestoneBonusForStreak(rewardStreakDays) : 0;
+  const milestoneUnlocked = Boolean(rewardMessage);
+  const message = milestoneUnlocked
+    ? renderTonePrompt(appStore.toneId, 'reward', rewardMessage ?? '')
+    : `${habitName} 已完成，今日记录已锁定。本次 +${pointsPerCheckIn} 分，继续把连续天数往上推。`;
+
+  return {
+    habitName,
+    title: milestoneUnlocked ? '里程碑奖励解锁' : '打卡完成',
+    message,
+    pointsGained: pointsPerCheckIn + milestoneBonus,
+    currentStreak,
+    totalPoints,
+    nextMilestoneLabel: nextReward ? `还差 ${nextReward.streakDays - currentStreak} 天` : '最高里程碑',
+    milestoneUnlocked,
+  };
 };
 
 const openReminderAction = (habitId: string) => {

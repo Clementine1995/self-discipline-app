@@ -23,7 +23,7 @@ export type PointSummary = {
   habitProgress: HabitPointProgress[];
 };
 
-const pointsPerCheckIn = 10;
+export const pointsPerCheckIn = 10;
 const pointsPerLevel = 100;
 const milestoneBonuses = [
   { streakDays: 30, bonus: 300 },
@@ -72,3 +72,6 @@ const buildPointBreakdown = (totalCheckIns: number, longestStreak: number): Poin
     totalPoints: basePoints + milestoneBonus,
   };
 };
+
+export const getMilestoneBonusForStreak = (streakDays: number) =>
+  milestoneBonuses.find((milestone) => milestone.streakDays === streakDays)?.bonus ?? 0;

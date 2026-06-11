@@ -7,6 +7,10 @@ export type RepeatRule =
   | {
       type: 'weekly';
       daysOfWeek: Weekday[];
+    }
+  | {
+      type: 'weeklyTarget';
+      timesPerWeek: number;
     };
 
 export type Habit = {

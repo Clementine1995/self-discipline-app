@@ -41,42 +41,52 @@
 
           <section class="section-block">
             <div class="section-heading">
-              <h2>给出结果</h2>
-              <p>先开始，再谈完成。推迟和放弃都要留下痕迹。</p>
+              <h2>{{ decisionTitle }}</h2>
+              <p>{{ decisionDescription }}</p>
             </div>
 
             <div class="decision-actions">
               <IonButton class="decision-primary" expand="block" :disabled="isCompleted" @click="startTask">
                 {{ hasStarted ? '继续做' : '现在做' }}
               </IonButton>
-              <IonButton expand="block" color="success" :disabled="isCompleted" @click="completeTask">
-                完成打卡
-              </IonButton>
-              <IonButton
-                class="decision-secondary"
-                expand="block"
-                fill="outline"
-                :disabled="!canSnooze || isCompleted"
-                @click="snoozeTask"
-              >
-                推迟 10 分钟{{ action ? `（${action.snoozeCount}/2）` : '' }}
-              </IonButton>
+              <div class="decision-secondary-grid">
+                <IonButton expand="block" color="success" :disabled="isCompleted" @click="completeTask">
+                  完成打卡
+                </IonButton>
+                <IonButton
+                  v-if="canSnooze && !isCompleted"
+                  class="decision-secondary"
+                  expand="block"
+                  fill="outline"
+                  @click="snoozeTask"
+                >
+                  推迟 10 分钟
+                </IonButton>
+              </div>
+              <div v-if="!canSnooze && !isCompleted" class="decision-lock">
+                推迟机会已用完，现在只能开始、完成，或者记录放弃原因。
+              </div>
             </div>
           </section>
 
-          <section class="section-block">
+          <section v-if="!isCompleted" class="section-block abandon-section" :class="{ expanded: showAbandonOptions || action?.status === 'abandoned' }">
             <div class="section-heading">
               <h2>今天放弃</h2>
-              <p>放弃可以，但要留下原因，别让它变成一笔糊涂账。</p>
+              <p>这是最后入口。确实不做，就把原因留下，别让它变成一笔糊涂账。</p>
             </div>
 
-            <div class="option-stack compact-options">
+            <div class="decision-actions compact-action-row">
+              <IonButton color="danger" fill="clear" expand="block" @click="showAbandonOptions = !showAbandonOptions">
+                {{ showAbandonOptions || action?.status === 'abandoned' ? '收起放弃原因' : '展开放弃原因' }}
+              </IonButton>
+            </div>
+
+            <div v-if="showAbandonOptions || action?.status === 'abandoned'" class="option-stack compact-options">
               <button
                 v-for="reason in abandonReasons"
                 :key="reason.value"
                 class="option-row option-row-single"
                 :class="{ selected: action?.abandonReason === reason.value }"
-                :disabled="isCompleted"
                 @click="abandonTask(reason.value)"
               >
                 <strong>{{ reason.label }}</strong>
@@ -131,6 +141,7 @@ const habitStore = useHabitStore();
 const checkinStore = useCheckinStore();
 const action = ref<ReminderAction>();
 const now = ref(new Date());
+const showAbandonOptions = ref(false);
 const toast = reactive({
   isOpen: false,
   message: '',
@@ -248,6 +259,44 @@ const pressureText = computed(() => {
 
   return '现在给它一个结果。';
 });
+const decisionTitle = computed(() => {
+  if (isCompleted.value) {
+    return '这次已经闭环';
+  }
+
+  if (action.value?.status === 'abandoned') {
+    return '已记录放弃原因';
+  }
+
+  if (!canSnooze.value) {
+    return '别再往后挪了';
+  }
+
+  if (hasStarted.value) {
+    return '把开始变成完成';
+  }
+
+  return '先立刻开始';
+});
+const decisionDescription = computed(() => {
+  if (isCompleted.value) {
+    return '打卡记录已经锁定，回到今日页继续处理剩余任务。';
+  }
+
+  if (action.value?.status === 'abandoned') {
+    return '今天已经留下原因。下次调整任务强度，不要只靠硬扛。';
+  }
+
+  if (!canSnooze.value) {
+    return '推迟次数用完后，系统不再给缓冲。现在只剩执行或留下放弃原因。';
+  }
+
+  if (hasStarted.value) {
+    return '已经开始就别停在开始。完成后直接打卡闭环。';
+  }
+
+  return '先点“现在做”，让任务进入执行状态；真的完成后再打卡。';
+});
 
 const loadAction = async () => {
   const currentHabit = habit.value;
@@ -289,6 +338,7 @@ const abandonTask = async (reason: AbandonReason) => {
   }
 
   action.value = await reminderActionService.abandon(habit.value, reason, actionDate.value);
+  showAbandonOptions.value = true;
   await cancelFollowupReminder(habit.value.id, actionDate.value);
   showToast('已记录放弃原因');
 };

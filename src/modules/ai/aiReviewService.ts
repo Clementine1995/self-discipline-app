@@ -2,7 +2,7 @@ import type { CheckIn, Habit } from '@/types/habit';
 import type { ToneId } from '@/types/tone';
 import { buildDowngradeSuggestion, type DowngradeSuggestion } from '@/modules/recovery/downgradeRules';
 import { buildHabitStats, calculateCompletionRate } from '@/modules/stats/statsRules';
-import { shouldHabitRunOnDate } from '@/modules/habits/repeatRules';
+import { shouldHabitBeActiveOnDate } from '@/modules/habits/repeatRules';
 import { toDateKey } from '@/utils/date';
 
 export type AiReviewHabitSnapshot = {
@@ -50,7 +50,7 @@ export const buildLocalAiDailyReview = ({
   now = new Date(),
 }: BuildAiDailyReviewInput): AiDailyReview => {
   const date = toDateKey(now);
-  const todayHabits = habits.filter((habit) => shouldHabitRunOnDate(habit, date));
+  const todayHabits = habits.filter((habit) => shouldHabitBeActiveOnDate(habit, checkIns, date));
   const todayCheckIns = new Set(checkIns.filter((checkIn) => checkIn.date === date).map((checkIn) => checkIn.habitId));
   const snapshots = todayHabits.map((habit) => {
     const stats = buildHabitStats(habit, checkIns, date);
@@ -70,7 +70,7 @@ export const buildLocalAiDailyReview = ({
   const completedHabits = snapshots.filter((item) => item.checkedToday).map((item) => item.snapshot);
   const unfinishedHabits = snapshots.filter((item) => !item.checkedToday).map((item) => item.snapshot);
   const completedCount = completedHabits.length;
-  const totalHabits = habits.length;
+  const totalHabits = todayHabits.length;
   const completionRate = calculateCompletionRate(completedCount, totalHabits);
   const riskItems = snapshots
     .filter((item) => !item.checkedToday)

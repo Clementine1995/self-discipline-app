@@ -1,5 +1,9 @@
 import type { CheckIn, Habit, HabitStats } from '@/types/habit';
-import { shouldHabitRunOnDate } from '@/modules/habits/repeatRules';
+import {
+  getWeeklyTargetFailureCount,
+  shouldHabitBeActiveOnDate,
+  shouldHabitRunOnDate,
+} from '@/modules/habits/repeatRules';
 import { addDays, eachDateKeyBetween, getRecentDateKeys, parseDateKey, toDateKey } from '@/utils/date';
 
 export const countTodayCompleted = (checkIns: CheckIn[], date: string) =>
@@ -44,7 +48,7 @@ export const buildHabitStats = (habit: Habit, checkIns: CheckIn[], today = toDat
     currentStreak: calculateCurrentStreak(checkedDates, scheduledDates, today),
     longestStreak: calculateLongestStreak(scheduledDates, checkedDates),
     totalCheckIns: habitCheckIns.length,
-    totalFailures: calculateTotalFailures(habit, checkedDates, today),
+    totalFailures: calculateTotalFailures(habit, checkIns, checkedDates, today),
   };
 };
 
@@ -83,7 +87,11 @@ export const calculateLongestStreak = (scheduledDates: string[], checkedDates: S
   return longest;
 };
 
-export const calculateTotalFailures = (habit: Habit, checkedDates: Set<string>, today = toDateKey(new Date())) => {
+export const calculateTotalFailures = (habit: Habit, checkIns: CheckIn[], checkedDates: Set<string>, today = toDateKey(new Date())) => {
+  if (habit.repeatRule.type === 'weeklyTarget') {
+    return getWeeklyTargetFailureCount(habit, checkIns, today);
+  }
+
   const startDate = toDateKey(parseDateKey(habit.createdAt.slice(0, 10)));
   const yesterday = toDateKey(addDays(parseDateKey(today), -1));
 
@@ -98,7 +106,7 @@ export const calculateTotalFailures = (habit: Habit, checkedDates: Set<string>, 
 
 export const buildSevenDayTrend = (habits: Habit[], checkIns: CheckIn[], today = new Date()): DayTrend[] =>
   getRecentDateKeys(7, today).map((date) => {
-    const activeHabits = habits.filter((habit) => shouldHabitRunOnDate(habit, date));
+    const activeHabits = habits.filter((habit) => shouldHabitBeActiveOnDate(habit, checkIns, date));
     const activeHabitIds = new Set(activeHabits.map((habit) => habit.id));
     const completed = checkIns.filter((checkIn) => checkIn.date === date && activeHabitIds.has(checkIn.habitId)).length;
     const total = activeHabits.length;
@@ -122,7 +130,7 @@ export const buildHabitSevenDayStatus = (
     date,
     checked: checkedDates.has(date),
     isBeforeCreated: date < habit.createdAt.slice(0, 10),
-    isScheduled: shouldHabitRunOnDate(habit, date),
+    isScheduled: shouldHabitBeActiveOnDate(habit, checkIns, date),
   }));
 };
 

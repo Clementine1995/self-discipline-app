@@ -117,7 +117,7 @@ import { giftOutline } from 'ionicons/icons';
 import { useHabitStore } from '@/stores/habitStore';
 import { useCheckinStore } from '@/stores/checkinStore';
 import { buildHabitStats, buildSevenDayTrend, calculateCompletionRate } from '@/modules/stats/statsRules';
-import { shouldHabitRunOnDate } from '@/modules/habits/repeatRules';
+import { shouldHabitBeActiveOnDate } from '@/modules/habits/repeatRules';
 import { buildPointSummary } from '@/modules/points/pointRules';
 import { toDateKey } from '@/utils/date';
 
@@ -131,7 +131,9 @@ onIonViewWillEnter(() => {
 });
 
 const todayKey = computed(() => toDateKey(new Date()));
-const todayHabits = computed(() => habitStore.habits.filter((habit) => shouldHabitRunOnDate(habit, todayKey.value)));
+const todayHabits = computed(() =>
+  habitStore.habits.filter((habit) => shouldHabitBeActiveOnDate(habit, checkinStore.checkIns, todayKey.value)),
+);
 const todayHabitIds = computed(() => new Set(todayHabits.value.map((habit) => habit.id)));
 const completedCount = computed(
   () =>

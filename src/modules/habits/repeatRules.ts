@@ -1,5 +1,5 @@
-import type { Habit, RepeatRule, Weekday } from '@/types/habit';
-import { parseDateKey } from '@/utils/date';
+import type { CheckIn, Habit, RepeatRule, Weekday } from '@/types/habit';
+import { eachDateKeyBetween, getWeekRange, parseDateKey } from '@/utils/date';
 
 export const weekdayOptions: { value: Weekday; label: string }[] = [
   { value: 1, label: '周一' },
@@ -20,6 +20,13 @@ export const normalizeRepeatRule = (repeatRule?: RepeatRule): RepeatRule => {
     return defaultRepeatRule;
   }
 
+  if (repeatRule.type === 'weeklyTarget') {
+    return {
+      type: 'weeklyTarget',
+      timesPerWeek: clampWeeklyTarget(repeatRule.timesPerWeek),
+    };
+  }
+
   if (repeatRule.type !== 'weekly') {
     return repeatRule;
   }
@@ -38,6 +45,28 @@ export const shouldHabitRunOnDate = (habit: Pick<Habit, 'createdAt' | 'repeatRul
   }
 
   return doesRepeatRuleMatchDate(normalizeRepeatRule(habit.repeatRule), dateKey);
+};
+
+export const shouldHabitBeActiveOnDate = (
+  habit: Pick<Habit, 'id' | 'createdAt' | 'repeatRule'>,
+  checkIns: CheckIn[],
+  dateKey: string,
+) => {
+  if (!shouldHabitRunOnDate(habit, dateKey)) {
+    return false;
+  }
+
+  const repeatRule = normalizeRepeatRule(habit.repeatRule);
+
+  if (repeatRule.type !== 'weeklyTarget') {
+    return true;
+  }
+
+  if (checkIns.some((checkIn) => checkIn.habitId === habit.id && checkIn.date === dateKey)) {
+    return true;
+  }
+
+  return countWeeklyTargetCheckInsUntilDate(habit.id, checkIns, dateKey) < repeatRule.timesPerWeek;
 };
 
 export const doesRepeatRuleMatchDate = (repeatRule: RepeatRule, dateKey: string) => {
@@ -74,6 +103,10 @@ export const getRepeatRuleWeekdays = (repeatRule: RepeatRule): Weekday[] => {
     return [0, 6];
   }
 
+  if (normalizedRule.type === 'weeklyTarget') {
+    return [0, 1, 2, 3, 4, 5, 6];
+  }
+
   return normalizedRule.type === 'weekly' ? normalizedRule.daysOfWeek : [1];
 };
 
@@ -92,6 +125,10 @@ export const formatRepeatRule = (repeatRule?: RepeatRule) => {
     return '周末重复';
   }
 
+  if (normalizedRule.type === 'weeklyTarget') {
+    return `每周 ${normalizedRule.timesPerWeek} 次`;
+  }
+
   if (normalizedRule.type !== 'weekly') {
     return '每天重复';
   }
@@ -103,4 +140,50 @@ export const formatRepeatRule = (repeatRule?: RepeatRule) => {
     .concat('重复');
 };
 
+export const countWeeklyTargetCheckIns = (habitId: string, checkIns: CheckIn[], dateKey: string) => {
+  const weekRange = getWeekRange(dateKey);
+
+  return checkIns.filter(
+    (checkIn) =>
+      checkIn.habitId === habitId && checkIn.date >= weekRange.start && checkIn.date <= weekRange.end,
+  ).length;
+};
+
+export const countWeeklyTargetCheckInsUntilDate = (habitId: string, checkIns: CheckIn[], dateKey: string) => {
+  const weekRange = getWeekRange(dateKey);
+
+  return checkIns.filter(
+    (checkIn) =>
+      checkIn.habitId === habitId && checkIn.date >= weekRange.start && checkIn.date <= dateKey,
+  ).length;
+};
+
+export const getWeeklyTargetFailureCount = (habit: Pick<Habit, 'id' | 'createdAt' | 'repeatRule'>, checkIns: CheckIn[], today: string) => {
+  const repeatRule = normalizeRepeatRule(habit.repeatRule);
+
+  if (repeatRule.type !== 'weeklyTarget') {
+    return 0;
+  }
+
+  const createdDate = habit.createdAt.slice(0, 10);
+  const todayWeek = getWeekRange(today);
+  const weekStarts = eachDateKeyBetween(getWeekRange(createdDate).start, todayWeek.start).filter(
+    (dateKey) => parseDateKey(dateKey).getDay() === 1 && dateKey < todayWeek.start,
+  );
+
+  return weekStarts.reduce((total, weekStart) => {
+    const weekEnd = getWeekRange(weekStart).end;
+    const effectiveStart = weekStart < createdDate ? createdDate : weekStart;
+    const possibleDays = eachDateKeyBetween(effectiveStart, weekEnd).length;
+    const target = Math.min(repeatRule.timesPerWeek, possibleDays);
+    const completed = checkIns.filter(
+      (checkIn) => checkIn.habitId === habit.id && checkIn.date >= effectiveStart && checkIn.date <= weekEnd,
+    ).length;
+
+    return total + Math.max(0, target - completed);
+  }, 0);
+};
+
 const isWeekday = (value: number): value is Weekday => value >= 0 && value <= 6;
+
+const clampWeeklyTarget = (value: number) => Math.min(7, Math.max(1, Math.round(Number(value) || 1)));

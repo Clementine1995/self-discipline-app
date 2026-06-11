@@ -121,6 +121,10 @@ export const validateHabitDraft = (draft: HabitDraft) => {
     errors.push('每周重复至少选择一天');
   }
 
+  if (draft.repeatRule.type === 'weeklyTarget' && (draft.repeatRule.timesPerWeek < 1 || draft.repeatRule.timesPerWeek > 7)) {
+    errors.push('每周次数需要在 1 到 7 次之间');
+  }
+
   return errors;
 };
 

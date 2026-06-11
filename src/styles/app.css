@@ -422,22 +422,23 @@ ion-label p {
 }
 
 .task-title-row {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-  justify-content: space-between;
   min-width: 0;
 }
 
 .task-title-row h3 {
+  margin-right: 8px;
   overflow-wrap: anywhere;
 }
 
 .task-state-pill {
-  flex: 0 0 auto;
+  display: inline-grid;
+  place-items: center;
+  width: 58px;
+  min-height: 28px;
   border: 1px solid var(--app-border);
   border-radius: 999px;
   padding: 3px 7px;
+  text-align: center;
   background: var(--app-surface-muted);
 }
 
@@ -480,14 +481,23 @@ ion-button {
 }
 
 .task-actions {
-  display: grid;
+  display: flex;
+  flex-wrap: wrap;
   gap: 6px;
-  justify-items: end;
-  min-width: 82px;
+  align-self: flex-start;
+  justify-content: flex-end;
+  align-items: center;
+  min-width: 128px;
+  padding-top: 2px;
 }
 
 .task-actions ion-button {
-  min-width: 72px;
+  min-width: 64px;
+  margin: 0;
+}
+
+.task-actions .task-check-button {
+  width: 64px;
 }
 
 .primary-action {
@@ -1002,13 +1012,40 @@ ion-button {
 }
 
 .decision-actions .decision-primary {
-  min-height: 52px;
-  font-size: 17px;
+  min-height: 58px;
+  font-size: 18px;
   letter-spacing: 0;
+}
+
+.decision-secondary-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
 }
 
 .decision-actions .decision-secondary {
   opacity: 0.86;
+}
+
+.decision-lock {
+  border: 1px dashed color-mix(in srgb, var(--app-warning) 60%, var(--app-border));
+  border-radius: var(--app-radius);
+  padding: 12px;
+  color: var(--app-text-muted);
+  line-height: 1.45;
+  background: color-mix(in srgb, var(--app-warning) 10%, var(--app-surface));
+}
+
+.abandon-section {
+  opacity: 0.82;
+}
+
+.abandon-section.expanded {
+  opacity: 1;
+}
+
+.abandon-section .section-heading h2 {
+  color: var(--app-danger);
 }
 
 .reminder-action-hero.urgent,
@@ -1078,6 +1115,30 @@ ion-button {
   border-color: var(--ion-color-primary);
   color: var(--ion-color-primary);
   background: var(--app-surface-muted);
+}
+
+.weekly-target-panel {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 14px;
+  align-items: center;
+  margin: 0 16px 16px;
+  border: 1px solid var(--app-border);
+  border-radius: var(--app-radius);
+  padding: 14px;
+  color: var(--ion-text-color);
+  background: var(--app-surface);
+}
+
+.weekly-target-panel strong,
+.weekly-target-panel small {
+  display: block;
+}
+
+.weekly-target-panel small {
+  margin-top: 4px;
+  color: var(--app-text-muted);
+  line-height: 1.4;
 }
 
 .action-row {
@@ -1184,6 +1245,76 @@ ion-button {
   font-size: 20px;
   font-weight: 900;
   background: var(--app-surface-muted);
+}
+
+.completion-reward-panel {
+  display: grid;
+  gap: 12px;
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--app-success) 48%, var(--app-border));
+  border-left: 5px solid var(--app-success);
+  border-radius: var(--app-radius);
+  padding: 16px;
+  color: var(--ion-text-color);
+  background: color-mix(in srgb, var(--app-success) 9%, var(--app-surface));
+  box-shadow: 0 12px 28px color-mix(in srgb, var(--app-shadow) 76%, transparent);
+}
+
+.completion-reward-panel.milestone {
+  border-color: color-mix(in srgb, var(--app-accent-secondary) 58%, var(--app-border));
+  border-left-color: var(--app-accent-secondary);
+  background: color-mix(in srgb, var(--app-accent-secondary) 12%, var(--app-surface));
+}
+
+.completion-reward-header {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 12px;
+  align-items: start;
+}
+
+.completion-reward-header h2 {
+  margin: 2px 0 0;
+  color: var(--ion-text-color);
+  font-size: 20px;
+  line-height: 1.25;
+  letter-spacing: 0;
+}
+
+.completion-reward-panel p {
+  margin: 0;
+  color: var(--app-text-muted);
+  line-height: 1.55;
+}
+
+.completion-reward-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.completion-reward-grid div {
+  min-width: 0;
+  border: 1px solid var(--app-border);
+  border-radius: var(--app-radius);
+  padding: 10px 8px;
+  background: color-mix(in srgb, var(--app-surface) 66%, var(--app-surface-muted));
+}
+
+.completion-reward-grid span {
+  display: block;
+  color: var(--app-text-muted);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.completion-reward-grid strong {
+  display: block;
+  margin-top: 5px;
+  overflow-wrap: anywhere;
+  color: var(--ion-text-color);
+  font-size: 17px;
+  line-height: 1.2;
 }
 
 .reminder-action-hero {
@@ -1443,5 +1574,15 @@ ion-app[data-theme='minimal-data'] .progress-fill {
   .page-stack {
     max-width: 720px;
     margin: 0 auto;
+  }
+}
+
+@media (max-width: 420px) {
+  .completion-reward-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .decision-secondary-grid {
+    grid-template-columns: 1fr;
   }
 }
