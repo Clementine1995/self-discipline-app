@@ -16,9 +16,14 @@
       <main class="page-stack">
         <section class="hero-panel today-command-panel" :class="todayRiskLevel">
           <div class="today-command-header">
-            <div>
+            <div class="command-heading">
+              <span class="command-status-icon" :class="todayRiskLevel">
+                <IonIcon :icon="commandIcon" />
+              </span>
+              <div>
               <p class="eyebrow">{{ todayLabel }}</p>
               <h1>{{ commandTitle }}</h1>
+              </div>
             </div>
             <div class="command-score">
               <span>完成率</span>
@@ -114,6 +119,9 @@
             <IonItem v-for="habit in todayHabits" :key="habit.id" class="task-item execution-item" :class="getTaskStateClass(habit.id)">
               <div class="today-task-card">
                 <div class="today-task-top">
+                  <span class="task-status-icon" :class="getTaskStateClass(habit.id)">
+                    <IonIcon :icon="getTaskStateIcon(habit.id)" />
+                  </span>
                   <div class="today-task-main">
                     <h3>{{ habit.name }}</h3>
                     <p>{{ getHabitScheduleText(habit) }} · {{ formatRepeatRule(habit.repeatRule) }}</p>
@@ -146,9 +154,18 @@
                   v-if="getReminderStatusText(habit.id) || getHabitPrompt(habit.id) || getDowngradePrompt(habit.id)"
                   class="today-task-notes"
                 >
-                  <p v-if="getReminderStatusText(habit.id)" class="habit-prompt urgent">{{ getReminderStatusText(habit.id) }}</p>
-                  <p v-if="getHabitPrompt(habit.id)" class="habit-prompt">{{ getHabitPrompt(habit.id) }}</p>
-                  <p v-if="getDowngradePrompt(habit.id)" class="habit-prompt muted">{{ getDowngradePrompt(habit.id) }}</p>
+                  <p v-if="getReminderStatusText(habit.id)" class="habit-prompt urgent">
+                    <IonIcon class="prompt-icon" :icon="reminderPromptIcon" />
+                    <span>{{ getReminderStatusText(habit.id) }}</span>
+                  </p>
+                  <p v-if="getHabitPrompt(habit.id)" class="habit-prompt">
+                    <IonIcon class="prompt-icon" :icon="tonePromptIcon" />
+                    <span>{{ getHabitPrompt(habit.id) }}</span>
+                  </p>
+                  <p v-if="getDowngradePrompt(habit.id)" class="habit-prompt muted">
+                    <IonIcon class="prompt-icon" :icon="downgradePromptIcon" />
+                    <span>{{ getDowngradePrompt(habit.id) }}</span>
+                  </p>
                 </div>
               </div>
             </IonItem>
@@ -181,6 +198,7 @@ import {
   IonButton,
   IonContent,
   IonHeader,
+  IonIcon,
   IonItem,
   IonList,
   IonPage,
@@ -189,6 +207,22 @@ import {
   IonToolbar,
   onIonViewWillEnter,
 } from '@ionic/vue';
+import {
+  alarmOutline,
+  alertCircleOutline,
+  arrowForwardCircleOutline,
+  barChartOutline,
+  checkmarkCircleOutline,
+  closeCircleOutline,
+  eyeOutline,
+  flagOutline,
+  leafOutline,
+  pauseCircleOutline,
+  playCircleOutline,
+  sparklesOutline,
+  timeOutline,
+  trophyOutline,
+} from 'ionicons/icons';
 import { computed, onUnmounted, reactive, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import type { ReminderAction } from '@/types/reminderAction';
@@ -234,6 +268,8 @@ const rewardAlert = reactive({
 });
 const completionFeedback = ref<CompletionFeedback>();
 const rewardAlertButtons = ['知道了'];
+const reminderPromptIcon = alarmOutline;
+const downgradePromptIcon = arrowForwardCircleOutline;
 
 onIonViewWillEnter(async () => {
   appStore.loadSettings();
@@ -313,6 +349,38 @@ const todayRiskLevel = computed(() => {
   }
 
   return 'calm';
+});
+const commandIcon = computed(() => {
+  if (todayRiskLevel.value === 'done') {
+    return trophyOutline;
+  }
+
+  if (todayRiskLevel.value === 'hot') {
+    return alertCircleOutline;
+  }
+
+  if (todayRiskLevel.value === 'warm') {
+    return flagOutline;
+  }
+
+  return timeOutline;
+});
+const tonePromptIcon = computed(() => {
+  const style = appStore.currentTheme.feedbackStyle;
+
+  if (style === 'data') {
+    return barChartOutline;
+  }
+
+  if (style === 'schemer' || style === 'command') {
+    return eyeOutline;
+  }
+
+  if (style === 'achievement' || style === 'challenge') {
+    return sparklesOutline;
+  }
+
+  return leafOutline;
 });
 const commandTitle = computed(() => {
   if (totalCount.value === 0) {
@@ -584,6 +652,34 @@ const getTaskStateClass = (habitId: string) => {
   }
 
   return 'is-urgent';
+};
+
+const getTaskStateIcon = (habitId: string) => {
+  if (checkinStore.isHabitCheckedToday(habitId)) {
+    return checkmarkCircleOutline;
+  }
+
+  const action = reminderActionMap.value.get(habitId);
+
+  if (!action) {
+    return habitStore.getHabitById(habitId)?.reminderEnabled ? timeOutline : flagOutline;
+  }
+
+  const summary = buildReminderActionSummary(action, now.value);
+
+  if (action.status === 'abandoned') {
+    return closeCircleOutline;
+  }
+
+  if (summary.isSnoozed) {
+    return pauseCircleOutline;
+  }
+
+  if (action.status === 'started') {
+    return playCircleOutline;
+  }
+
+  return alertCircleOutline;
 };
 
 const getTaskStateLabel = (habitId: string) => {

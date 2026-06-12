@@ -189,6 +189,46 @@ ion-label p {
   align-items: start;
 }
 
+.command-heading {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 12px;
+  align-items: start;
+}
+
+.command-status-icon {
+  display: inline-grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  border: 1px solid color-mix(in srgb, var(--ion-color-primary) 42%, var(--app-border));
+  border-radius: 14px;
+  color: var(--ion-color-primary);
+  background: color-mix(in srgb, var(--ion-color-primary) 10%, var(--app-surface));
+}
+
+.command-status-icon ion-icon {
+  font-size: 24px;
+}
+
+.command-status-icon.hot {
+  color: var(--app-danger);
+  border-color: color-mix(in srgb, var(--app-danger) 44%, var(--app-border));
+  background: color-mix(in srgb, var(--app-danger) 10%, var(--app-surface));
+}
+
+.command-status-icon.warm {
+  color: var(--app-warning);
+  border-color: color-mix(in srgb, var(--app-warning) 48%, var(--app-border));
+  background: color-mix(in srgb, var(--app-warning) 12%, var(--app-surface));
+}
+
+.command-status-icon.done {
+  color: var(--app-success);
+  border-color: color-mix(in srgb, var(--app-success) 44%, var(--app-border));
+  background: color-mix(in srgb, var(--app-success) 12%, var(--app-surface));
+}
+
 .command-score {
   display: grid;
   gap: 4px;
@@ -644,9 +684,52 @@ ion-label p {
 
 .today-task-top {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: auto minmax(0, 1fr) auto;
   gap: 10px;
   align-items: start;
+}
+
+.task-status-icon {
+  display: inline-grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border: 1px solid var(--app-border);
+  border-radius: 11px;
+  color: var(--app-text-muted);
+  background: var(--app-surface-muted);
+}
+
+.task-status-icon ion-icon {
+  font-size: 19px;
+}
+
+.task-status-icon.is-urgent {
+  color: var(--app-danger);
+  border-color: color-mix(in srgb, var(--app-danger) 42%, var(--app-border));
+  background: color-mix(in srgb, var(--app-danger) 10%, var(--app-surface));
+}
+
+.task-status-icon.is-snoozed {
+  color: var(--app-warning);
+  border-color: color-mix(in srgb, var(--app-warning) 46%, var(--app-border));
+  background: color-mix(in srgb, var(--app-warning) 12%, var(--app-surface));
+}
+
+.task-status-icon.is-started {
+  color: var(--ion-color-primary);
+  border-color: color-mix(in srgb, var(--ion-color-primary) 42%, var(--app-border));
+  background: color-mix(in srgb, var(--ion-color-primary) 10%, var(--app-surface));
+}
+
+.task-status-icon.is-done {
+  color: var(--app-success);
+  border-color: color-mix(in srgb, var(--app-success) 44%, var(--app-border));
+  background: color-mix(in srgb, var(--app-success) 12%, var(--app-surface));
+}
+
+.task-status-icon.is-abandoned {
+  color: var(--app-text-muted);
 }
 
 .today-task-main {
@@ -712,10 +795,20 @@ ion-button {
 }
 
 .habit-prompt {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 7px;
+  align-items: start;
   margin: 0;
   color: var(--ion-color-primary) !important;
   font-size: 13px;
   line-height: 1.45;
+}
+
+.prompt-icon {
+  margin-top: 2px;
+  font-size: 15px;
+  flex: none;
 }
 
 .habit-prompt.urgent {
