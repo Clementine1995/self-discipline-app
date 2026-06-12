@@ -103,6 +103,19 @@
 
         <section class="section-block">
           <div class="section-heading">
+            <h2>页面入口</h2>
+            <p>暂时用不到的页面可以先从底部导航收起来，功能和数据会保留。</p>
+          </div>
+
+          <div class="action-row compact-action-row">
+            <IonButton expand="block" :fill="appStore.showReviewTab ? 'solid' : 'outline'" @click="toggleReviewTab">
+              {{ appStore.showReviewTab ? '隐藏复盘入口' : '显示复盘入口' }}
+            </IonButton>
+          </div>
+        </section>
+
+        <section class="section-block">
+          <div class="section-heading">
             <h2>界面主题</h2>
             <p>主题只控制界面外观；文案语气单独保留，切换主题不会改掉你选好的说话风格。</p>
           </div>
@@ -329,6 +342,10 @@ const setReminderScheduleCount = async (value: ReminderScheduleCount) => {
   await habitStore.refreshScheduledReminders();
   reminderMessage.value = `未来提醒已改为预排 ${value} 次，并已重排任务提醒`;
   await refreshReminderStatus();
+};
+
+const toggleReviewTab = async () => {
+  await appStore.setShowReviewTab(!appStore.showReviewTab);
 };
 
 const exportData = async () => {

@@ -19,7 +19,7 @@
           <IonLabel>统计</IonLabel>
         </IonTabButton>
 
-        <IonTabButton tab="review" href="/review">
+        <IonTabButton v-if="appStore.showReviewTab" tab="review" href="/review">
           <IonIcon :icon="reviewIcon" />
           <IonLabel>复盘</IonLabel>
         </IonTabButton>

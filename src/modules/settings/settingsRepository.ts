@@ -10,6 +10,7 @@ export type AppSettings = {
   toneId: ToneId;
   reminderIntensity: ReminderIntensity;
   reminderScheduleCount: ReminderScheduleCount;
+  showReviewTab: boolean;
 };
 
 export const defaultAppSettings: AppSettings = {
@@ -17,6 +18,7 @@ export const defaultAppSettings: AppSettings = {
   toneId: 'gentle',
   reminderIntensity: 'strong',
   reminderScheduleCount: 14,
+  showReviewTab: false,
 };
 
 const settingsRepository = createLocalStorageRepository<AppSettings>('self-discipline:settings');

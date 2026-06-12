@@ -16,7 +16,7 @@
       <main class="page-stack with-top-space">
         <section v-if="habit" class="hero-panel">
           <p class="eyebrow">
-            {{ habit.reminderEnabled ? `${habit.reminderTime} 提醒` : '提醒已关闭' }} ·
+            {{ getHabitScheduleText(habit) }} ·
             {{ formatRepeatRule(habit.repeatRule) }}
           </p>
           <h1>{{ habit.name }}</h1>
@@ -203,6 +203,8 @@ onIonViewWillEnter(() => {
 });
 
 const formatDay = (date: string) => date.slice(5);
+const getHabitScheduleText = (habit: { reminderEnabled: boolean; reminderTime: string }) =>
+  habit.reminderEnabled ? `${habit.reminderTime} 提醒` : '全天完成';
 const getHistoryDayLabel = (day: HabitDayStatus) => {
   if (day.isBeforeCreated) {
     return '未创建';

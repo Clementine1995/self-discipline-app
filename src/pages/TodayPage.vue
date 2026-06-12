@@ -51,7 +51,9 @@
             <strong>{{ priorityHabit.name }}</strong>
             <p>{{ priorityMessage }}</p>
           </div>
-          <IonButton size="small" @click="openReminderAction(priorityHabit.id)">处理</IonButton>
+          <IonButton size="small" @click="handlePriorityHabit(priorityHabit.id)">
+            {{ priorityAction || priorityHabit.reminderEnabled ? '处理' : '打卡' }}
+          </IonButton>
         </section>
 
         <section class="theme-feedback compact-feedback" :class="appStore.currentTheme.feedbackStyle">
@@ -110,36 +112,44 @@
 
           <IonList v-else lines="none" class="task-list execution-list">
             <IonItem v-for="habit in todayHabits" :key="habit.id" class="task-item execution-item" :class="getTaskStateClass(habit.id)">
-              <IonLabel>
-                <div class="task-title-row">
-                  <h3>{{ habit.name }}</h3>
+              <div class="today-task-card">
+                <div class="today-task-top">
+                  <div class="today-task-main">
+                    <h3>{{ habit.name }}</h3>
+                    <p>{{ getHabitScheduleText(habit) }} · {{ formatRepeatRule(habit.repeatRule) }}</p>
+                  </div>
+                  <div class="task-actions">
+                    <span v-if="!checkinStore.isHabitCheckedToday(habit.id)" class="task-state-pill">
+                      {{ getTaskStateLabel(habit.id) }}
+                    </span>
+                    <IonButton
+                      class="task-check-button"
+                      :fill="checkinStore.isHabitCheckedToday(habit.id) ? 'solid' : 'outline'"
+                      size="small"
+                      :disabled="checkinStore.isHabitCheckedToday(habit.id)"
+                      @click="toggleCheckIn(habit.id)"
+                    >
+                      {{ checkinStore.isHabitCheckedToday(habit.id) ? '已完成' : '打卡' }}
+                    </IonButton>
+                    <IonButton
+                      v-if="getReminderStatusText(habit.id)"
+                      fill="clear"
+                      size="small"
+                      @click="openReminderAction(habit.id)"
+                    >
+                      处理
+                    </IonButton>
+                  </div>
                 </div>
-                <p>{{ habit.reminderTime }} 提醒 · {{ formatRepeatRule(habit.repeatRule) }}</p>
-                <p v-if="getReminderStatusText(habit.id)" class="habit-prompt urgent">{{ getReminderStatusText(habit.id) }}</p>
-                <p v-if="getHabitPrompt(habit.id)" class="habit-prompt">{{ getHabitPrompt(habit.id) }}</p>
-                <p v-if="getDowngradePrompt(habit.id)" class="habit-prompt muted">{{ getDowngradePrompt(habit.id) }}</p>
-              </IonLabel>
-              <div class="task-actions">
-                <span v-if="!checkinStore.isHabitCheckedToday(habit.id)" class="task-state-pill">
-                  {{ getTaskStateLabel(habit.id) }}
-                </span>
-                <IonButton
-                  class="task-check-button"
-                  :fill="checkinStore.isHabitCheckedToday(habit.id) ? 'solid' : 'outline'"
-                  size="small"
-                  :disabled="checkinStore.isHabitCheckedToday(habit.id)"
-                  @click="toggleCheckIn(habit.id)"
+
+                <div
+                  v-if="getReminderStatusText(habit.id) || getHabitPrompt(habit.id) || getDowngradePrompt(habit.id)"
+                  class="today-task-notes"
                 >
-                  {{ checkinStore.isHabitCheckedToday(habit.id) ? '已完成' : '打卡' }}
-                </IonButton>
-                <IonButton
-                  v-if="getReminderStatusText(habit.id)"
-                  fill="clear"
-                  size="small"
-                  @click="openReminderAction(habit.id)"
-                >
-                  处理
-                </IonButton>
+                  <p v-if="getReminderStatusText(habit.id)" class="habit-prompt urgent">{{ getReminderStatusText(habit.id) }}</p>
+                  <p v-if="getHabitPrompt(habit.id)" class="habit-prompt">{{ getHabitPrompt(habit.id) }}</p>
+                  <p v-if="getDowngradePrompt(habit.id)" class="habit-prompt muted">{{ getDowngradePrompt(habit.id) }}</p>
+                </div>
               </div>
             </IonItem>
           </IonList>
@@ -172,7 +182,6 @@ import {
   IonContent,
   IonHeader,
   IonItem,
-  IonLabel,
   IonList,
   IonPage,
   IonTitle,
@@ -585,7 +594,7 @@ const getTaskStateLabel = (habitId: string) => {
   const action = reminderActionMap.value.get(habitId);
 
   if (!action) {
-    return '待提醒';
+    return habitStore.getHabitById(habitId)?.reminderEnabled ? '待提醒' : '全天';
   }
 
   if (action.status === 'abandoned') {
@@ -625,8 +634,8 @@ const compareTodayHabits = (firstHabitId: string, secondHabitId: string, firstIn
 
   const firstHabit = habitStore.getHabitById(firstHabitId);
   const secondHabit = habitStore.getHabitById(secondHabitId);
-  const firstReminderTime = firstHabit ? getReminderTimeValue(firstHabit.reminderTime) : 0;
-  const secondReminderTime = secondHabit ? getReminderTimeValue(secondHabit.reminderTime) : 0;
+  const firstReminderTime = firstHabit ? getReminderTimeValue(firstHabit) : 0;
+  const secondReminderTime = secondHabit ? getReminderTimeValue(secondHabit) : 0;
 
   if (firstReminderTime !== secondReminderTime) {
     return firstReminderTime - secondReminderTime;
@@ -659,10 +668,17 @@ const getTodaySortPriority = (habitId: string) => {
   return action.status === 'started' ? 0 : 1;
 };
 
-const getReminderTimeValue = (reminderTime: string) => {
-  const [hour = 0, minute = 0] = reminderTime.split(':').map(Number);
+const getReminderTimeValue = (habit: { reminderEnabled: boolean; reminderTime: string }) => {
+  if (!habit.reminderEnabled) {
+    return 24 * 60;
+  }
+
+  const [hour = 0, minute = 0] = habit.reminderTime.split(':').map(Number);
   return hour * 60 + minute;
 };
+
+const getHabitScheduleText = (habit: { reminderEnabled: boolean; reminderTime: string }) =>
+  habit.reminderEnabled ? `${habit.reminderTime} 提醒` : '全天完成';
 
 const buildCompletionFeedback = ({
   habitName,
@@ -701,6 +717,17 @@ const openReminderAction = (habitId: string) => {
     path: `/reminders/${habitId}`,
     query: { date: todayKey.value },
   });
+};
+
+const handlePriorityHabit = (habitId: string) => {
+  const habit = habitStore.getHabitById(habitId);
+
+  if (priorityAction.value || habit?.reminderEnabled) {
+    openReminderAction(habitId);
+    return;
+  }
+
+  void toggleCheckIn(habitId);
 };
 
 const buildHabitStatsById = (habitId: string) => habitStatsMap.value.get(habitId);

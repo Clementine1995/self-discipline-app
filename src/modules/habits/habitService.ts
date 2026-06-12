@@ -109,7 +109,7 @@ export const validateHabitDraft = (draft: HabitDraft) => {
     errors.push('请输入任务名称');
   }
 
-  if (!/^\d{2}:\d{2}$/.test(draft.reminderTime)) {
+  if (draft.reminderEnabled && !/^\d{2}:\d{2}$/.test(draft.reminderTime)) {
     errors.push('请选择有效的提醒时间');
   }
 

@@ -68,9 +68,9 @@
               <IonLabel>
                 <div class="task-title-row">
                   <h3>{{ habit.name }}</h3>
-                  <span v-if="!habit.reminderEnabled" class="task-state-pill">无提醒</span>
+                  <span v-if="!habit.reminderEnabled" class="task-state-pill">全天</span>
                 </div>
-                <p>{{ habit.reminderEnabled ? `${habit.reminderTime} 提醒` : '提醒已关闭' }} · {{ formatRepeatRule(habit.repeatRule) }}</p>
+                <p>{{ getHabitScheduleText(habit) }} · {{ formatRepeatRule(habit.repeatRule) }}</p>
                 <div class="task-library-meta">
                   <span>连续 {{ getHabitStats(habit.id)?.currentStreak ?? 0 }} 天</span>
                   <span>失败 {{ getHabitStats(habit.id)?.totalFailures ?? 0 }} 次</span>
@@ -132,7 +132,7 @@ onIonViewWillEnter(async () => {
   await checkinStore.loadCheckIns();
 
   if (route.query.reminder === '1' && habitStore.reminderMessage) {
-    toast.message = '任务已保存，提醒设置已同步';
+    toast.message = `任务已保存，${habitStore.reminderMessage}`;
     toast.isOpen = true;
     await router.replace({ path: '/tasks' });
   }
@@ -156,11 +156,14 @@ const libraryMessage = computed(() => {
     return '所有任务都没有开启提醒，执行全靠自觉，风险偏高。';
   }
 
-  return `已管理 ${totalHabitCount.value} 个任务，其中 ${reminderEnabledCount.value} 个会主动提醒你。`;
+  const untimedCount = totalHabitCount.value - reminderEnabledCount.value;
+  return `已管理 ${totalHabitCount.value} 个任务，其中 ${reminderEnabledCount.value} 个会主动提醒你，${untimedCount} 个只要求当天完成。`;
 });
 const habitStatsMap = computed(() =>
   new Map(habitStore.habits.map((habit) => [habit.id, buildHabitStats(habit, checkinStore.checkIns)])),
 );
 
 const getHabitStats = (habitId: string) => habitStatsMap.value.get(habitId);
+const getHabitScheduleText = (habit: { reminderEnabled: boolean; reminderTime: string }) =>
+  habit.reminderEnabled ? `${habit.reminderTime} 提醒` : '全天完成';
 </script>

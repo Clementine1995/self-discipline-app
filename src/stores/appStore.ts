@@ -10,6 +10,7 @@ export const useAppStore = defineStore('app', {
     toneId: 'gentle' as ToneId,
     reminderIntensity: 'strong' as ReminderIntensity,
     reminderScheduleCount: 14 as ReminderScheduleCount,
+    showReviewTab: false,
     isLoaded: false,
   }),
   getters: {
@@ -26,6 +27,7 @@ export const useAppStore = defineStore('app', {
       this.toneId = settings.toneId;
       this.reminderIntensity = settings.reminderIntensity;
       this.reminderScheduleCount = settings.reminderScheduleCount;
+      this.showReviewTab = settings.showReviewTab;
       this.isLoaded = true;
     },
 
@@ -55,12 +57,18 @@ export const useAppStore = defineStore('app', {
       await this.persistSettings();
     },
 
+    async setShowReviewTab(showReviewTab: boolean) {
+      this.showReviewTab = showReviewTab;
+      await this.persistSettings();
+    },
+
     async persistSettings() {
       await appSettingsRepository.save({
         themeId: this.themeId,
         toneId: this.toneId,
         reminderIntensity: this.reminderIntensity,
         reminderScheduleCount: this.reminderScheduleCount,
+        showReviewTab: this.showReviewTab,
       });
     },
   },

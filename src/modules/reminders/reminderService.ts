@@ -92,7 +92,7 @@ export const syncDailyReminder = async (habit: Habit): Promise<ReminderSyncResul
       return {
         scheduled: false,
         permissionGranted: true,
-        message: '提醒已关闭',
+        message: '已设为全天任务，不会发送本地提醒',
       };
     }
 

@@ -10,12 +10,48 @@
     </IonHeader>
 
     <IonContent fullscreen>
-      <main class="page-stack with-top-space">
-        <section class="section-block">
-          <VanForm class="van-form-panel">
+      <main class="page-stack with-top-space habit-editor-page">
+        <section class="editor-briefing-panel" :class="{ quiet: !draft.reminderEnabled }">
+          <div class="editor-briefing-top">
+            <div>
+              <p class="eyebrow">{{ isEditing ? '编辑任务' : '新建任务' }}</p>
+              <h1>{{ previewName }}</h1>
+            </div>
+            <span class="editor-mode-pill">{{ draft.reminderEnabled ? '定时提醒' : '全天完成' }}</span>
+          </div>
+          <p>{{ editorSubtitle }}</p>
+          <div class="editor-preview-grid">
+            <div>
+              <IonIcon :icon="timeIcon" />
+              <span>{{ scheduleSummary }}</span>
+            </div>
+            <div>
+              <IonIcon :icon="repeatIcon" />
+              <span>{{ repeatRuleLabel }}</span>
+            </div>
+            <div>
+              <IonIcon :icon="thresholdIcon" />
+              <span>{{ failureSummary }}</span>
+            </div>
+          </div>
+        </section>
+
+        <section class="section-block editor-section">
+          <div class="section-heading">
+            <h2>任务核心</h2>
+            <p>先把任务说清楚，再决定它什么时候出现。</p>
+          </div>
+
+          <VanForm class="van-form-panel editor-form-panel">
             <VanCellGroup inset>
-              <VanField v-model="draft.name" label="名称" placeholder="例如：看书" clearable />
+              <VanField v-model="draft.name" label="任务名称" placeholder="例如：看书 20 分钟" clearable />
+              <VanField label="定时提醒">
+                <template #input>
+                  <VanSwitch v-model="draft.reminderEnabled" size="22px" />
+                </template>
+              </VanField>
               <VanField
+                v-if="draft.reminderEnabled"
                 :model-value="draft.reminderTime"
                 label="提醒时间"
                 readonly
@@ -23,12 +59,64 @@
                 placeholder="选择提醒时间"
                 @click="openTimePicker"
               />
-              <VanField label="启用提醒">
-                <template #input>
-                  <VanSwitch v-model="draft.reminderEnabled" size="22px" />
-                </template>
-              </VanField>
-              <VanField label="重复规则" :model-value="repeatRuleLabel" readonly />
+            </VanCellGroup>
+          </VanForm>
+
+          <div v-if="!draft.reminderEnabled" class="form-note inline-note">
+            这个任务会出现在今日列表里，但不会弹本地通知。适合“当天内完成即可”的任务。
+          </div>
+        </section>
+
+        <section class="section-block editor-section">
+          <div class="section-heading">
+            <h2>执行节奏</h2>
+            <p>选择它出现的频率。越贴近日常，后面越不用反复改。</p>
+          </div>
+
+          <div class="repeat-card-grid">
+            <button
+              v-for="option in repeatRuleOptions"
+              :key="option.type"
+              class="repeat-card"
+              :class="{ selected: draft.repeatRule.type === option.type }"
+              type="button"
+              @click="setRepeatRule(option.type)"
+            >
+              <strong>{{ option.label }}</strong>
+              <small>{{ option.description }}</small>
+            </button>
+          </div>
+
+          <div v-if="draft.repeatRule.type === 'weekly'" class="weekday-grid editor-weekday-grid">
+            <button
+              v-for="weekday in weekdayOptions"
+              :key="weekday.value"
+              class="weekday-chip"
+              :class="{ selected: draft.repeatRule.daysOfWeek.includes(weekday.value) }"
+              type="button"
+              @click="toggleWeekday(weekday.value)"
+            >
+              {{ weekday.label }}
+            </button>
+          </div>
+
+          <div v-if="draft.repeatRule.type === 'weeklyTarget'" class="weekly-target-panel editor-weekly-target">
+            <div>
+              <strong>每周完成次数</strong>
+              <small>适合运动、冥想、整理这类不固定星期几，但一周要达标的任务。</small>
+            </div>
+            <VanStepper v-model="draft.repeatRule.timesPerWeek" :min="1" :max="7" integer />
+          </div>
+        </section>
+
+        <section class="section-block editor-section">
+          <div class="section-heading">
+            <h2>奖惩协议</h2>
+            <p>给未来的自己留一份清楚的反馈规则。</p>
+          </div>
+
+          <VanForm class="van-form-panel editor-form-panel">
+            <VanCellGroup inset>
               <VanField
                 v-model.number="draft.failureThreshold"
                 label="失败阈值"
@@ -56,49 +144,14 @@
               />
             </VanCellGroup>
           </VanForm>
+        </section>
 
-          <div class="option-stack form-option-stack">
-            <button
-              v-for="option in repeatRuleOptions"
-              :key="option.type"
-              class="option-row option-row-single"
-              :class="{ selected: draft.repeatRule.type === option.type }"
-              type="button"
-              @click="setRepeatRule(option.type)"
-            >
-              <span>
-                <strong>{{ option.label }}</strong>
-                <small>{{ option.description }}</small>
-              </span>
-            </button>
-          </div>
-
-          <div v-if="draft.repeatRule.type === 'weekly'" class="weekday-grid">
-            <button
-              v-for="weekday in weekdayOptions"
-              :key="weekday.value"
-              class="weekday-chip"
-              :class="{ selected: draft.repeatRule.daysOfWeek.includes(weekday.value) }"
-              type="button"
-              @click="toggleWeekday(weekday.value)"
-            >
-              {{ weekday.label }}
-            </button>
-          </div>
-
-          <div v-if="draft.repeatRule.type === 'weeklyTarget'" class="weekly-target-panel">
-            <div>
-              <strong>每周完成次数</strong>
-              <small>适合运动、冥想这类不固定星期几，但一周要达标的任务。</small>
-            </div>
-            <VanStepper v-model="draft.repeatRule.timesPerWeek" :min="1" :max="7" integer />
-          </div>
-
+        <section class="editor-save-dock">
           <div v-if="errorMessage" class="form-error">{{ errorMessage }}</div>
           <div v-if="reminderMessage" class="form-note">{{ reminderMessage }}</div>
 
           <VanButton block type="primary" class="primary-action" :disabled="isSaving" @click="saveHabit">
-            {{ isSaving ? '保存中...' : '保存任务' }}
+            {{ isSaving ? '保存中...' : isEditing ? '保存修改' : '创建任务' }}
           </VanButton>
 
           <VanButton
@@ -144,11 +197,13 @@ import {
   IonButtons,
   IonContent,
   IonHeader,
+  IonIcon,
   IonPage,
   IonTitle,
   IonToolbar,
   onIonViewWillEnter,
 } from '@ionic/vue';
+import { alarmOutline, calendarOutline, flagOutline } from 'ionicons/icons';
 import {
   Button as VanButton,
   CellGroup as VanCellGroup,
@@ -169,6 +224,9 @@ import type { RepeatRule, Weekday } from '@/types/habit';
 const route = useRoute();
 const router = useRouter();
 const habitStore = useHabitStore();
+const timeIcon = alarmOutline;
+const repeatIcon = calendarOutline;
+const thresholdIcon = flagOutline;
 const isEditing = computed(() => Boolean(route.params.id));
 const habitId = computed(() => String(route.params.id || ''));
 const draft = reactive(createEmptyHabitDraft());
@@ -198,6 +256,20 @@ const repeatRuleOptions: { type: RepeatRule['type']; label: string; description:
   { type: 'weekly', label: '每周几', description: '自己选择一周中的执行日。' },
   { type: 'weeklyTarget', label: '每周次数', description: '不固定日期，只要求一周完成几次。' },
 ];
+const previewName = computed(() => draft.name.trim() || '给任务起个名字');
+const scheduleSummary = computed(() => (draft.reminderEnabled ? `${draft.reminderTime} 提醒` : '当天内完成即可'));
+const failureSummary = computed(() => `失败 ${Math.max(1, Number(draft.failureThreshold) || 1)} 次触发提醒`);
+const editorSubtitle = computed(() => {
+  if (!draft.name.trim()) {
+    return '把任务写成一个能立刻开始的动作，后面打卡时会轻松很多。';
+  }
+
+  if (!draft.reminderEnabled) {
+    return '这是一个全天任务，不催时间，只看今天有没有完成。';
+  }
+
+  return '提醒、重复和奖惩会一起进入今日清单。';
+});
 
 onIonViewWillEnter(async () => {
   errorMessage.value = '';
