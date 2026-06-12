@@ -48,6 +48,7 @@ This file keeps the project handoff context inside the repository so another mac
 - Review tab visibility is now controlled from Settings and defaults to hidden while the review flow is not needed.
 - Task create/edit now uses a mission-style setup screen with live preview, execution rhythm cards, and a separated reward/punishment section.
 - Today page now uses small state icons in the command panel, task cards, and prompt lines to better match theme/tone feedback.
+- Weekly target tasks now run as flexible weekly goals: each day can record one completion, and Today shows current weekly progress such as `1/3`.
 
 ## Important Notes
 

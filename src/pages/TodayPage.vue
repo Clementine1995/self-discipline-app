@@ -34,6 +34,10 @@
           <div class="progress-track" aria-hidden="true">
             <div class="progress-fill" :style="{ width: `${completionRate}%` }"></div>
           </div>
+          <div class="command-theme-note">
+            <span>{{ appStore.currentTheme.name }}</span>
+            <strong>{{ themeFeedback.title }}</strong>
+          </div>
           <div class="command-metrics">
             <div>
               <span>待处理</span>
@@ -59,15 +63,6 @@
           <IonButton size="small" @click="handlePriorityHabit(priorityHabit.id)">
             {{ priorityAction || priorityHabit.reminderEnabled ? '处理' : '打卡' }}
           </IonButton>
-        </section>
-
-        <section class="theme-feedback compact-feedback" :class="appStore.currentTheme.feedbackStyle">
-          <div>
-            <span>{{ appStore.currentTheme.name }}</span>
-            <strong>{{ themeFeedback.title }}</strong>
-            <p>{{ themeFeedback.message }}</p>
-          </div>
-          <div class="theme-feedback-mark" aria-hidden="true">{{ themeFeedback.mark }}</div>
         </section>
 
         <section v-if="completionFeedback" class="completion-reward-panel" :class="{ milestone: completionFeedback.milestoneUnlocked }">
@@ -125,6 +120,15 @@
                   <div class="today-task-main">
                     <h3>{{ habit.name }}</h3>
                     <p>{{ getHabitScheduleText(habit) }} · {{ formatRepeatRule(habit.repeatRule) }}</p>
+                    <div v-if="isWeeklyTargetHabit(habit.id)" class="weekly-progress-card" :class="{ complete: isWeeklyTargetComplete(habit.id) }">
+                      <div class="weekly-progress-copy">
+                        <span>{{ getWeeklyTargetCopy(habit.id) }}</span>
+                        <strong>{{ getWeeklyTargetProgressText(habit.id) }}</strong>
+                      </div>
+                      <div class="mini-progress-track" aria-hidden="true">
+                        <div class="mini-progress-fill" :style="{ width: getWeeklyTargetProgressWidth(habit.id) }"></div>
+                      </div>
+                    </div>
                   </div>
                   <div class="task-actions">
                     <span v-if="!checkinStore.isHabitCheckedToday(habit.id)" class="task-state-pill">
@@ -137,7 +141,7 @@
                       :disabled="checkinStore.isHabitCheckedToday(habit.id)"
                       @click="toggleCheckIn(habit.id)"
                     >
-                      {{ checkinStore.isHabitCheckedToday(habit.id) ? '已完成' : '打卡' }}
+                      {{ getCheckInButtonLabel(habit.id) }}
                     </IonButton>
                     <IonButton
                       v-if="getReminderStatusText(habit.id)"
@@ -234,7 +238,7 @@ import { findNewlyUnlockedReward, findNextRewardMilestone, findUnlockedReward } 
 import { renderTonePrompt } from '@/modules/tones/toneCopy';
 import { useAppStore } from '@/stores/appStore';
 import { buildDowngradeSuggestion } from '@/modules/recovery/downgradeRules';
-import { formatRepeatRule, shouldHabitBeActiveOnDate } from '@/modules/habits/repeatRules';
+import { countWeeklyTargetCheckIns, formatRepeatRule, shouldHabitBeActiveOnDate } from '@/modules/habits/repeatRules';
 import { buildReminderActionSummary, reminderActionService } from '@/modules/reminderActions/reminderActionService';
 import { cancelFollowupReminder } from '@/modules/reminders/reminderService';
 import { buildPointSummary, getMilestoneBonusForStreak, pointsPerCheckIn } from '@/modules/points/pointRules';
@@ -690,6 +694,10 @@ const getTaskStateLabel = (habitId: string) => {
   const action = reminderActionMap.value.get(habitId);
 
   if (!action) {
+    if (isWeeklyTargetHabit(habitId)) {
+      return getWeeklyTargetProgressText(habitId);
+    }
+
     return habitStore.getHabitById(habitId)?.reminderEnabled ? '待提醒' : '全天';
   }
 
@@ -706,6 +714,62 @@ const getTaskStateLabel = (habitId: string) => {
   }
 
   return '到点';
+};
+
+const getWeeklyTargetProgress = (habitId: string) => {
+  const habit = habitStore.getHabitById(habitId);
+
+  if (!habit || habit.repeatRule.type !== 'weeklyTarget') {
+    return undefined;
+  }
+
+  const completed = countWeeklyTargetCheckIns(habitId, checkinStore.checkIns, todayKey.value);
+  const target = habit.repeatRule.timesPerWeek;
+
+  return {
+    completed,
+    target,
+    remaining: Math.max(0, target - completed),
+    isComplete: completed >= target,
+    percent: Math.min(100, Math.round((completed / target) * 100)),
+  };
+};
+
+const isWeeklyTargetHabit = (habitId: string) => Boolean(getWeeklyTargetProgress(habitId));
+
+const isWeeklyTargetComplete = (habitId: string) => getWeeklyTargetProgress(habitId)?.isComplete ?? false;
+
+const getWeeklyTargetProgressText = (habitId: string) => {
+  const progress = getWeeklyTargetProgress(habitId);
+  return progress ? `${progress.completed}/${progress.target}` : '';
+};
+
+const getWeeklyTargetProgressWidth = (habitId: string) => `${getWeeklyTargetProgress(habitId)?.percent ?? 0}%`;
+
+const getWeeklyTargetCopy = (habitId: string) => {
+  const progress = getWeeklyTargetProgress(habitId);
+
+  if (!progress) {
+    return '';
+  }
+
+  if (checkinStore.isHabitCheckedToday(habitId)) {
+    return '今天已记 1 次，已计入本周目标';
+  }
+
+  if (progress.isComplete) {
+    return '本周次数已达标';
+  }
+
+  return `本周还差 ${progress.remaining} 次`;
+};
+
+const getCheckInButtonLabel = (habitId: string) => {
+  if (checkinStore.isHabitCheckedToday(habitId)) {
+    return isWeeklyTargetHabit(habitId) ? '已记' : '已完成';
+  }
+
+  return isWeeklyTargetHabit(habitId) ? '记一次' : '打卡';
 };
 
 const compareTodayHabits = (firstHabitId: string, secondHabitId: string, firstIndex: number, secondIndex: number) => {

@@ -44,7 +44,13 @@ export const shouldHabitRunOnDate = (habit: Pick<Habit, 'createdAt' | 'repeatRul
     return false;
   }
 
-  return doesRepeatRuleMatchDate(normalizeRepeatRule(habit.repeatRule), dateKey);
+  const repeatRule = normalizeRepeatRule(habit.repeatRule);
+
+  if (repeatRule.type === 'weeklyTarget') {
+    return true;
+  }
+
+  return doesRepeatRuleMatchDate(repeatRule, dateKey);
 };
 
 export const shouldHabitBeActiveOnDate = (

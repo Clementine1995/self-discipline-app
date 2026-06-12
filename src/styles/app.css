@@ -255,24 +255,53 @@ ion-label p {
   line-height: 1;
 }
 
-.command-metrics {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+.command-theme-note {
+  display: flex;
   gap: 8px;
+  align-items: center;
+  min-width: 0;
+  border: 1px solid color-mix(in srgb, var(--ion-color-primary) 18%, var(--app-border));
+  border-radius: 10px;
+  padding: 8px 10px;
+  background: color-mix(in srgb, var(--ion-color-primary) 5%, var(--app-surface));
+}
+
+.command-theme-note span {
+  flex: none;
+  color: var(--ion-color-primary);
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.command-theme-note strong {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--ion-text-color);
+  font-size: 13px;
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.command-metrics {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
 }
 
 .command-metrics div {
-  display: grid;
-  gap: 4px;
+  display: inline-flex;
+  gap: 6px;
+  align-items: baseline;
   border: 1px solid var(--app-border);
-  border-radius: var(--app-radius);
-  padding: 10px;
+  border-radius: 999px;
+  padding: 6px 9px;
   background: color-mix(in srgb, var(--app-surface-muted) 72%, var(--app-surface));
 }
 
 .command-metrics strong {
   color: var(--ion-text-color);
-  font-size: 20px;
+  font-size: 14px;
   line-height: 1;
 }
 
@@ -751,6 +780,61 @@ ion-label p {
   line-height: 1.35;
 }
 
+.weekly-progress-card {
+  display: grid;
+  gap: 6px;
+  margin-top: 8px;
+  border-left: 3px solid color-mix(in srgb, var(--ion-color-primary) 48%, var(--app-border));
+  padding-left: 8px;
+}
+
+.weekly-progress-card.complete {
+  border-left-color: color-mix(in srgb, var(--app-success) 52%, var(--app-border));
+}
+
+.weekly-progress-copy {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: space-between;
+  min-width: 0;
+}
+
+.weekly-progress-copy span {
+  min-width: 0;
+  color: var(--app-text-muted);
+  font-size: 12px;
+  line-height: 1.3;
+}
+
+.weekly-progress-copy strong {
+  flex: none;
+  color: var(--ion-color-primary);
+  font-size: 13px;
+}
+
+.weekly-progress-card.complete .weekly-progress-copy strong {
+  color: var(--app-success);
+}
+
+.mini-progress-track {
+  overflow: hidden;
+  height: 5px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--app-border) 72%, transparent);
+}
+
+.mini-progress-fill {
+  height: 100%;
+  border-radius: inherit;
+  background: var(--ion-color-primary);
+  transition: width 180ms ease;
+}
+
+.weekly-progress-card.complete .mini-progress-fill {
+  background: var(--app-success);
+}
+
 .today-task-notes {
   display: grid;
   gap: 6px;
@@ -827,7 +911,7 @@ ion-button {
   align-self: start;
   justify-content: flex-end;
   align-items: center;
-  max-width: 128px;
+  max-width: 136px;
   padding-top: 2px;
 }
 
@@ -839,7 +923,8 @@ ion-button {
 }
 
 .task-actions .task-check-button {
-  width: 58px;
+  min-width: 58px;
+  white-space: nowrap;
 }
 
 .primary-action {
