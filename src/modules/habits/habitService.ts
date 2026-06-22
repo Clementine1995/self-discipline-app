@@ -2,7 +2,7 @@ import type { Habit } from '@/types/habit';
 import { habitRepository } from '@/modules/habits/habitRepository';
 import { checkinService } from '@/modules/checkins/checkinService';
 import { defaultRepeatRule, normalizeRepeatRule } from '@/modules/habits/repeatRules';
-import { cancelDailyReminder, type ReminderSyncResult, syncDailyReminder } from '@/modules/reminders/reminderService';
+import { cancelDailyReminder, cancelStaleReminderNotifications, type ReminderSyncResult, syncDailyReminder } from '@/modules/reminders/reminderService';
 import { reminderActionService } from '@/modules/reminderActions/reminderActionService';
 
 export type HabitDraft = {
@@ -85,10 +85,12 @@ export const habitService = {
 
   async deleteHabit(id: string) {
     const habits = await habitRepository.getAll();
-    await habitRepository.saveAll(habits.filter((habit) => habit.id !== id));
+    const nextHabits = habits.filter((habit) => habit.id !== id);
+    await habitRepository.saveAll(nextHabits);
     await checkinService.deleteCheckInsForHabit(id);
     await reminderActionService.deleteActionsForHabit(id);
     await cancelDailyReminder(id);
+    await cancelStaleReminderNotifications(nextHabits);
   },
 };
 

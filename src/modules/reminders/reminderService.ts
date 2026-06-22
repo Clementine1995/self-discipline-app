@@ -1,6 +1,7 @@
 import { LocalNotifications } from '@capacitor/local-notifications';
-import type { Habit } from '@/types/habit';
-import { formatRepeatRule, shouldHabitRunOnDate } from '@/modules/habits/repeatRules';
+import type { CheckIn, Habit } from '@/types/habit';
+import { formatRepeatRule, shouldHabitBeActiveOnDate } from '@/modules/habits/repeatRules';
+import { checkinRepository } from '@/modules/checkins/checkinRepository';
 import { appSettingsRepository, type ReminderIntensity } from '@/modules/settings/settingsRepository';
 import { addDays, toDateKey } from '@/utils/date';
 
@@ -108,7 +109,8 @@ export const syncDailyReminder = async (habit: Habit): Promise<ReminderSyncResul
 
     const settings = await appSettingsRepository.get();
     await ensureReminderChannel(settings.reminderIntensity);
-    const upcomingReminderDates = getUpcomingReminderDates(habit, settings.reminderScheduleCount);
+    const checkIns = await checkinRepository.getAll();
+    const upcomingReminderDates = getUpcomingReminderDates(habit, settings.reminderScheduleCount, checkIns);
 
     if (upcomingReminderDates.length === 0) {
       return {
@@ -146,12 +148,14 @@ export const reconcileHabitReminders = async (habits: Habit[]) => {
 
     const settings = await appSettingsRepository.get();
     await ensureReminderChannel(settings.reminderIntensity);
+    const checkIns = await checkinRepository.getAll();
+    await cancelStaleReminderNotifications(habits);
 
     for (const habit of habits) {
       await cancelDailyReminder(habit.id);
 
       if (habit.reminderEnabled) {
-        await scheduleDailyReminder(habit, undefined, settings.reminderScheduleCount, settings.reminderIntensity);
+        await scheduleDailyReminder(habit, undefined, settings.reminderScheduleCount, settings.reminderIntensity, checkIns);
       }
     }
   } catch {
@@ -174,6 +178,7 @@ export const scheduleDailyReminder = async (
   reminderDates?: Date[],
   reminderScheduleCount?: number,
   reminderIntensity?: ReminderIntensity,
+  checkIns?: CheckIn[],
 ) => {
   if (!habit.reminderEnabled) {
     return [];
@@ -181,7 +186,8 @@ export const scheduleDailyReminder = async (
 
   const settings = await appSettingsRepository.get();
   const intensity = reminderIntensity ?? settings.reminderIntensity;
-  const dates = reminderDates ?? getUpcomingReminderDates(habit, reminderScheduleCount ?? settings.reminderScheduleCount);
+  const activeCheckIns = checkIns ?? (await checkinRepository.getAll());
+  const dates = reminderDates ?? getUpcomingReminderDates(habit, reminderScheduleCount ?? settings.reminderScheduleCount, activeCheckIns);
 
   if (dates.length === 0) {
     return [];
@@ -230,6 +236,39 @@ export const cancelFollowupReminder = async (habitId: string, date = toDateKey(n
     await LocalNotifications.cancel({
       notifications: [{ id: getFollowupNotificationId(habitId, date) }],
     });
+  } catch {
+    // Browser preview may not support Capacitor local notifications.
+  }
+};
+
+export const cancelStaleReminderNotifications = async (habits: Habit[]) => {
+  try {
+    const today = toDateKey(new Date());
+    const activeHabitIds = new Set(habits.map((habit) => habit.id));
+    const pending = await LocalNotifications.getPending();
+    const staleNotifications = pending.notifications.filter((notification) => {
+      const extra = notification.extra as { type?: string; habitId?: string; date?: string } | undefined;
+
+      return isStaleReminderExtra(extra, activeHabitIds, today);
+    });
+
+    if (staleNotifications.length > 0) {
+      await LocalNotifications.cancel({
+        notifications: staleNotifications.map((notification) => ({ id: notification.id })),
+      });
+    }
+
+    const delivered = await LocalNotifications.getDeliveredNotifications();
+    const staleDeliveredNotifications = delivered.notifications.filter((notification) => {
+      const extra = (notification.extra ?? notification.data) as { type?: string; habitId?: string; date?: string } | undefined;
+      return isStaleReminderExtra(extra, activeHabitIds, today);
+    });
+
+    if (staleDeliveredNotifications.length > 0) {
+      await LocalNotifications.removeDeliveredNotifications({
+        notifications: staleDeliveredNotifications,
+      });
+    }
   } catch {
     // Browser preview may not support Capacitor local notifications.
   }
@@ -366,6 +405,14 @@ const buildReminderNotificationExtra = (habit: Habit, at: Date) => ({
   remindedAt: at.toISOString(),
 });
 
+const isStaleReminderExtra = (
+  extra: { type?: string; habitId?: string; date?: string } | undefined,
+  activeHabitIds: Set<string>,
+  today: string,
+) =>
+  extra?.type === 'habit-reminder' &&
+  (!extra.habitId || !activeHabitIds.has(extra.habitId) || Boolean(extra.date && extra.date < today));
+
 const checkExactAlarmStatus = async () => {
   try {
     const status = await LocalNotifications.checkExactNotificationSetting();
@@ -401,7 +448,7 @@ const getPermissionMessage = (display: string, exactAlarm?: string, pendingCount
   return '通知权限尚未确认';
 };
 
-const getUpcomingReminderDates = (habit: Habit, reminderScheduleCount: number) => {
+const getUpcomingReminderDates = (habit: Habit, reminderScheduleCount: number, checkIns: CheckIn[]) => {
   const [hour, minute] = habit.reminderTime.split(':').map(Number);
   const now = new Date();
   const upcomingReminderDates: Date[] = [];
@@ -414,7 +461,7 @@ const getUpcomingReminderDates = (habit: Habit, reminderScheduleCount: number) =
       continue;
     }
 
-    if (shouldHabitRunOnDate(habit, toDateKey(candidate))) {
+    if (shouldHabitBeActiveOnDate(habit, checkIns, toDateKey(candidate))) {
       upcomingReminderDates.push(candidate);
     }
   }

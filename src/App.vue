@@ -50,6 +50,7 @@ import { computed, onMounted, onUnmounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useAppStore } from '@/stores/appStore';
 import { useHabitStore } from '@/stores/habitStore';
+import { cancelDailyReminder } from '@/modules/reminders/reminderService';
 
 const appStore = useAppStore();
 const habitStore = useHabitStore();
@@ -145,7 +146,7 @@ const getBackFallbackPath = () => {
 
 const registerNotificationActionHandler = async () => {
   try {
-    notificationActionHandle = await LocalNotifications.addListener('localNotificationActionPerformed', (event) => {
+    notificationActionHandle = await LocalNotifications.addListener('localNotificationActionPerformed', async (event) => {
       const extra = event.notification.extra as
         | {
             type?: string;
@@ -155,6 +156,16 @@ const registerNotificationActionHandler = async () => {
         | undefined;
 
       if (extra?.type === 'habit-reminder' && extra.habitId) {
+        if (!habitStore.isLoaded) {
+          await habitStore.loadHabits();
+        }
+
+        if (!habitStore.getHabitById(extra.habitId)) {
+          await cancelDailyReminder(extra.habitId);
+          void router.replace('/today');
+          return;
+        }
+
         void router.replace({
           path: `/reminders/${extra.habitId}`,
           query: extra.date ? { date: extra.date } : undefined,
